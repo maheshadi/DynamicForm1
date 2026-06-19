@@ -1,0 +1,4 @@
+.hr-builder-field { cursor: pointer; border: 1px solid #dddbda; border-radius: 4px; background: white; transition: border-color 0.15s; }
+.hr-builder-field:hover { border-color: #0070d2; }
+.hr-builder-field.hr-selected { border: 2px solid #0070d2; background: #f0f7ff; }
+.hr-drag-handle { cursor: grab; color: #706e6b; }

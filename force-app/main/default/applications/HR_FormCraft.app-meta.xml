@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <defaultLandingTab>HR_Form_Builder</defaultLandingTab>
+    <description>HR FormCraft — Metadata-driven form builder and renderer for HR processes.</description>
+    <formFactors>Small</formFactors>
+    <formFactors>Large</formFactors>
+    <isNavAutoTempTabsDisabled>false</isNavAutoTempTabsDisabled>
+    <isNavPersonalizationDisabled>false</isNavPersonalizationDisabled>
+    <isNavTabPersistenceDisabled>false</isNavTabPersistenceDisabled>
+    <isOmniPinnedViewEnabled>false</isOmniPinnedViewEnabled>
+    <label>HR FormCraft</label>
+    <navType>Standard</navType>
+    <tabs>HR_Form_Builder</tabs>
+    <tabs>HR_Form_Library</tabs>
+    <uiType>Lightning</uiType>
+</CustomApplication>

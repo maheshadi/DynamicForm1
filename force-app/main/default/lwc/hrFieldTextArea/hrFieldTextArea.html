@@ -1,0 +1,11 @@
+<template>
+    <template if:true={isRichText}>
+        <lightning-input-rich-text value={value} placeholder={field.placeholder}
+            disabled={isDisabled} onchange={handleChange}></lightning-input-rich-text>
+    </template>
+    <template if:false={isRichText}>
+        <lightning-textarea value={value} placeholder={field.placeholder}
+            max-length={field.maxLength} disabled={isDisabled}
+            required={field.required} onchange={handleChange}></lightning-textarea>
+    </template>
+</template>

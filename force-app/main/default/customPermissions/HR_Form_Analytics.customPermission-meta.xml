@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomPermission xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Read access to HR_Form_Submission__c, HR_Field_Value__c, HR_Audit_Log__c for reporting.</description>
+    <isLicensed>false</isLicensed>
+    <label>FormCraft Analytics</label>
+</CustomPermission>

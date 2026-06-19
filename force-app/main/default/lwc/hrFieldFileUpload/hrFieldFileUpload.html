@@ -1,0 +1,11 @@
+<template>
+    <lightning-file-upload
+        name={field.apiName}
+        label={field.label}
+        accept={acceptedFormats}
+        record-id={submissionId}
+        disabled={isDisabled}
+        multiple={field.allowMultipleFiles}
+        onuploadfinished={handleUpload}>
+    </lightning-file-upload>
+</template>

@@ -1,0 +1,9 @@
+<template>
+    <template if:true={recordId}>
+        <lightning-record-form record-id={recordId} object-api-name={field.sfObjectApi}
+            fields={fields} mode="readonly"></lightning-record-form>
+    </template>
+    <template if:false={recordId}>
+        <p class="slds-text-body_small slds-text-color_weak">(Record field — requires active record context)</p>
+    </template>
+</template>

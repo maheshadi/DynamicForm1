@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>HR_Deployment_Target__c</fullName>
+    <label>Deployment Target</label>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>LWC_Component</fullName>
+                <default>true</default>
+                <label>LWC_Component</label>
+            </value>
+            <value>
+                <fullName>Screen_Flow</fullName>
+                <default>false</default>
+                <label>Screen_Flow</label>
+            </value>
+            <value>
+                <fullName>Lightning_App_Page</fullName>
+                <default>false</default>
+                <label>Lightning_App_Page</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

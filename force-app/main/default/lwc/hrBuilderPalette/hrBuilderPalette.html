@@ -1,0 +1,24 @@
+<template>
+    <div class="hr-palette slds-p-around_small">
+        <h3 class="slds-text-heading_small slds-m-bottom_small">Field Types</h3>
+
+        <template for:each={paletteGroups} for:item="group">
+            <div key={group.name} class="slds-m-bottom_small">
+                <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_xx-small">{group.name}</p>
+                <template for:each={group.types} for:item="ft">
+                    <div key={ft.typeApi}
+                         class="hr-palette-tile slds-box slds-box_x-small slds-m-bottom_xx-small slds-grid slds-grid_vertical-align-center"
+                         draggable="true"
+                         data-type={ft.fieldType}
+                         data-api={ft.typeApi}
+                         ondragstart={handleDragStart}
+                         onclick={handleClick}>
+                        <lightning-icon icon-name={ft.icon} size="x-small"
+                            class="slds-m-right_x-small"></lightning-icon>
+                        <span class="slds-text-body_small">{ft.label}</span>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </div>
+</template>

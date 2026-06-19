@@ -1,0 +1,70 @@
+<template>
+    <div class="hr-rule-editor">
+        <div class="slds-grid slds-grid_align-spread slds-m-bottom_small">
+            <h3 class="slds-text-heading_small">Conditional Logic Rules</h3>
+            <button class="slds-button slds-button_brand" onclick={handleAddRule}>+ Add Rule</button>
+        </div>
+
+        <template if:false={hasRules}>
+            <div class="slds-box slds-align_absolute-center slds-p-around_medium">
+                <p class="slds-text-body_small slds-text-color_weak">No rules yet. Add a rule to control field/section visibility.</p>
+            </div>
+        </template>
+
+        <template for:each={rules} for:item="rule">
+            <div key={rule.id} class="slds-box slds-box_x-small slds-m-bottom_small">
+                <div class="slds-grid slds-grid_align-spread slds-m-bottom_x-small">
+                    <lightning-input label="Rule Name" value={rule.name} data-id={rule.id}
+                        data-field="name" onchange={handleRuleChange} variant="label-hidden"
+                        placeholder="Rule Name" class="slds-col"></lightning-input>
+                    <button class="slds-button slds-button_icon slds-button_icon-error slds-m-left_x-small"
+                        data-id={rule.id} onclick={handleRemoveRule}>
+                        <lightning-icon icon-name="utility:delete" size="x-small"></lightning-icon>
+                    </button>
+                </div>
+                <div class="slds-grid slds-gutters_x-small slds-wrap">
+                    <div class="slds-col slds-size_1-of-3">
+                        <lightning-combobox label="When field" value={rule.triggerFieldApiName}
+                            options={fieldOptions} data-id={rule.id} data-field="triggerFieldApiName"
+                            onchange={handleRuleChange}></lightning-combobox>
+                    </div>
+                    <div class="slds-col slds-size_1-of-4">
+                        <lightning-combobox label="Operator" value={rule.operator}
+                            options={operatorOptions} data-id={rule.id} data-field="operator"
+                            onchange={handleRuleChange}></lightning-combobox>
+                    </div>
+                    <div class="slds-col slds-size_1-of-4">
+                        <lightning-input label="Value" value={rule.triggerValue}
+                            data-id={rule.id} data-field="triggerValue"
+                            onchange={handleRuleChange}></lightning-input>
+                    </div>
+                </div>
+                <div class="slds-grid slds-gutters_x-small slds-wrap slds-m-top_x-small">
+                    <div class="slds-col slds-size_1-of-4">
+                        <lightning-combobox label="Then" value={rule.action}
+                            options={actionOptions} data-id={rule.id} data-field="action"
+                            onchange={handleRuleChange}></lightning-combobox>
+                    </div>
+                    <div class="slds-col slds-size_1-of-4">
+                        <lightning-combobox label="Target Type" value={rule.targetType}
+                            options={targetTypeOptions} data-id={rule.id} data-field="targetType"
+                            onchange={handleRuleChange}></lightning-combobox>
+                    </div>
+                    <div class="slds-col slds-size_1-of-3">
+                        <lightning-combobox label="Target" value={rule.targetApiName}
+                            options={fieldOptions} data-id={rule.id} data-field="targetApiName"
+                            onchange={handleRuleChange}></lightning-combobox>
+                    </div>
+                    <div class="slds-col slds-size_1-of-6">
+                        <lightning-input label="Action Value" value={rule.actionValue}
+                            data-id={rule.id} data-field="actionValue"
+                            onchange={handleRuleChange}></lightning-input>
+                    </div>
+                </div>
+                <lightning-input type="toggle" label="Active" checked={rule.isActive}
+                    data-id={rule.id} data-field="isActive" onchange={handleRuleToggle}
+                    class="slds-m-top_x-small"></lightning-input>
+            </div>
+        </template>
+    </div>
+</template>

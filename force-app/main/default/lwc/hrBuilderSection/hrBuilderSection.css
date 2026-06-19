@@ -1,0 +1,8 @@
+.hr-builder-section { border: 1px solid #dddbda; border-radius: 4px; }
+.hr-builder-section.hr-selected { border: 2px solid #0070d2; }
+.hr-section-header { background: #f3f2f2; border-radius: 4px 4px 0 0; cursor: pointer; user-select: none; }
+.hr-section-header:hover { background: #e5e5e5; }
+.hr-drag-handle { cursor: grab; color: #706e6b; }
+.hr-fields-grid.hr-cols-2 .c-hr-builder-field { width: 50%; }
+.hr-fields-grid.hr-cols-1 .c-hr-builder-field { width: 100%; }
+.hr-field-drop-hint { border: 2px dashed #dddbda; border-radius: 4px; width: 100%; min-height: 60px; }

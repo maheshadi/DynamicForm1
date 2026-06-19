@@ -1,0 +1,50 @@
+<template>
+    <div class={sectionClass}
+         data-section-id={section.id}
+         ondragover={handleSectionDragOver}
+         ondrop={handleSectionDrop}>
+
+        <!-- Section header -->
+        <div class="hr-section-header slds-grid slds-grid_align-spread slds-p-around_x-small"
+             onclick={handleSectionClick}
+             draggable="true"
+             ondragstart={handleSectionDragStart}>
+            <div class="slds-grid slds-grid_vertical-align-center">
+                <lightning-icon icon-name="utility:drag_and_drop" size="x-small"
+                    class="slds-m-right_x-small hr-drag-handle"></lightning-icon>
+                <lightning-icon icon-name={collapseIcon} size="x-small"
+                    class="slds-m-right_x-small" onclick={handleToggleCollapse}></lightning-icon>
+                <span class="slds-text-heading_small">{section.title}</span>
+                <span class="slds-badge slds-m-left_x-small">{fieldCount} fields</span>
+            </div>
+            <button class="slds-button slds-button_icon slds-button_icon-error"
+                    onclick={handleRemoveSection} title="Remove section">
+                <lightning-icon icon-name="utility:delete" size="x-small"></lightning-icon>
+            </button>
+        </div>
+
+        <!-- Fields grid -->
+        <template if:false={isCollapsed}>
+            <div class={fieldsGridClass}>
+                <template for:each={enrichedFields} for:item="field">
+                    <c-hr-builder-field
+                        key={field.id}
+                        field={field}
+                        is-selected={field.isSelected}
+                        onfieldselected={handleFieldSelected}
+                        onfieldremoved={handleFieldRemoved}
+                        onfielddragstart={handleFieldDragStart}
+                        onfielddrop={handleFieldDrop}>
+                    </c-hr-builder-field>
+                </template>
+
+                <!-- Empty drop zone -->
+                <template if:true={isEmpty}>
+                    <div class="hr-field-drop-hint slds-p-around_medium slds-align_absolute-center">
+                        <p class="slds-text-body_small slds-text-color_weak">Drop fields here</p>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </div>
+</template>

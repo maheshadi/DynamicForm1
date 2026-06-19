@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>HR_On_Submit_Action__c</fullName>
+    <label>On Submit Action</label>
+    <required>true</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Show_Message</fullName>
+                <default>true</default>
+                <label>Show_Message</label>
+            </value>
+            <value>
+                <fullName>Redirect_URL</fullName>
+                <default>false</default>
+                <label>Redirect_URL</label>
+            </value>
+            <value>
+                <fullName>Launch_Flow</fullName>
+                <default>false</default>
+                <label>Launch_Flow</label>
+            </value>
+            <value>
+                <fullName>Close_Modal</fullName>
+                <default>false</default>
+                <label>Close_Modal</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

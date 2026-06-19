@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomPermission xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Access to the builder UI and all builder Apex methods. Cannot publish.</description>
+    <isLicensed>false</isLicensed>
+    <label>FormCraft Builder Access</label>
+</CustomPermission>

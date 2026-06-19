@@ -1,0 +1,4 @@
+.hr-section-header { background: #0070d2; border-radius: 4px 4px 0 0; color: white; }
+.hr-section-header.hr-collapsible { cursor: pointer; }
+.hr-section-header.hr-collapsible:hover { background: #005fb2; }
+.hr-cols-1 .slds-col { width: 100% !important; }

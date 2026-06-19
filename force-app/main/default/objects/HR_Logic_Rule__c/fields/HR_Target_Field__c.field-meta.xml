@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>HR_Target_Field__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <label>Target Field</label>
+    <referenceTo>HR_Form_Field__c</referenceTo>
+    <relationshipLabel>Target Logic Rules</relationshipLabel>
+    <relationshipName>Target_Rules</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

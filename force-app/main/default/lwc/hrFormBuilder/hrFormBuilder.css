@@ -1,0 +1,20 @@
+.hr-form-builder {
+    height: 100vh;
+    overflow: hidden;
+}
+.hr-builder-palette {
+    background: #f3f2f2;
+    border-right: 1px solid #dddbda;
+    overflow-y: auto;
+    height: 100%;
+}
+.hr-builder-canvas {
+    overflow-y: auto;
+    height: 100%;
+}
+.hr-builder-properties {
+    background: #f3f2f2;
+    border-left: 1px solid #dddbda;
+    overflow-y: auto;
+    height: 100%;
+}

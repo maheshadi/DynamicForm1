@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Default</label>
+    <protected>false</protected>
+    <values>
+        <field>HR_Allowed_File_Types__c</field>
+        <value xsi:type="xsd:string">.pdf,.docx,.xlsx,.jpg,.jpeg,.png,.tiff,.txt</value>
+    </values>
+    <values>
+        <field>HR_Auto_Save_Interval_Sec__c</field>
+        <value xsi:type="xsd:double">30.0</value>
+    </values>
+    <values>
+        <field>HR_Default_Success_Msg__c</field>
+        <value xsi:type="xsd:string">Your form has been submitted successfully.</value>
+    </values>
+    <values>
+        <field>HR_Enable_Analytics__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>HR_Enable_Versioning__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>HR_Max_Fields_Per_Form__c</field>
+        <value xsi:type="xsd:double">200.0</value>
+    </values>
+    <values>
+        <field>HR_Max_File_Upload_MB__c</field>
+        <value xsi:type="xsd:double">10.0</value>
+    </values>
+    <values>
+        <field>HR_Max_Rules_Per_Form__c</field>
+        <value xsi:type="xsd:double">50.0</value>
+    </values>
+    <values>
+        <field>HR_Max_Sections_Per_Form__c</field>
+        <value xsi:type="xsd:double">20.0</value>
+    </values>
+    <values>
+        <field>HR_Max_Versions_Per_Form__c</field>
+        <value xsi:type="xsd:double">20.0</value>
+    </values>
+    <values>
+        <field>HR_Schema_JSON_Max_Chars__c</field>
+        <value xsi:type="xsd:double">131072.0</value>
+    </values>
+</CustomMetadata>

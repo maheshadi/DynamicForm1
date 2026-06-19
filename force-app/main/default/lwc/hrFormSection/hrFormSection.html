@@ -1,0 +1,32 @@
+<template>
+    <div class="hr-form-section slds-card slds-m-bottom_medium">
+        <div class={headerClass} onclick={handleToggle}>
+            <div class="slds-grid slds-grid_vertical-align-center slds-p-around_small">
+                <template if:true={section.collapsible}>
+                    <lightning-icon icon-name={chevronIcon} size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                </template>
+                <h3 class="slds-text-heading_small">{section.title}</h3>
+            </div>
+        </div>
+        <template if:true={section.helpText}>
+            <div class="slds-notify slds-notify_alert slds-m-around_x-small" role="note">
+                <p class="slds-text-body_small">{section.helpText}</p>
+            </div>
+        </template>
+        <template if:false={isCollapsed}>
+            <div class={fieldsClass}>
+                <template for:each={enrichedVisibleFields} for:item="field">
+                    <div key={field.apiName} class={field.wrapClass}>
+                        <c-hr-form-field
+                            field={field}
+                            value={field.fieldValue}
+                            is-required={field.fieldIsRequired}
+                            is-disabled={field.fieldIsDisabled}
+                            onvaluechanged={handleValueChanged}>
+                        </c-hr-form-field>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </div>
+</template>

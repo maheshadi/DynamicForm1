@@ -1,0 +1,17 @@
+<template>
+    <template if:true={isDivider}>
+        <hr class="slds-m-vertical_medium" />
+    </template>
+    <template if:true={isInfoBox}>
+        <div class="slds-notify slds-notify_alert slds-m-vertical_x-small" role="note">
+            <lightning-icon icon-name="utility:info_alt" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+            <span class="slds-assistive-text">Info</span>
+            <p class="slds-text-body_small">{field.infoBoxContent}</p>
+        </div>
+    </template>
+    <template if:true={isInstructions}>
+        <div class="slds-box slds-box_x-small slds-m-vertical_x-small hr-instructions">
+            <lightning-formatted-rich-text value={field.infoBoxContent}></lightning-formatted-rich-text>
+        </div>
+    </template>
+</template>

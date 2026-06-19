@@ -1,0 +1,53 @@
+<template>
+    <div class="hr-field-lookup">
+        <lightning-input
+            type="search"
+            value={searchTerm}
+            placeholder={field.placeholder}
+            disabled={isDisabled}
+            onchange={handleSearch}
+            onkeydown={handleKeyDown}>
+        </lightning-input>
+        <template if:true={showDropdown}>
+            <div class="hr-lookup-dropdown slds-dropdown slds-dropdown_left">
+                <ul class="dropdown__list" role="listbox">
+                    <template if:true={isSearching}>
+                        <li class="slds-media slds-listbox__item slds-p-around_x-small">
+                            <lightning-spinner size="x-small" alternative-text="Searching..."></lightning-spinner>
+                        </li>
+                    </template>
+                    <template if:false={isSearching}>
+                        <template if:true={hasResults}>
+                            <template for:each={results} for:item="rec">
+                                <li key={rec.id} class="slds-media slds-listbox__item"
+                                    data-id={rec.id} data-label={rec.label}
+                                    onclick={handleSelect}>
+                                    <span class="slds-media__figure slds-listbox__option-icon">
+                                        <lightning-icon icon-name="standard:record" size="x-small"></lightning-icon>
+                                    </span>
+                                    <span class="slds-media__body">
+                                        <span class="slds-truncate">{rec.label}</span>
+                                    </span>
+                                </li>
+                            </template>
+                        </template>
+                        <template if:false={hasResults}>
+                            <li class="slds-media slds-listbox__item slds-p-around_x-small">
+                                <p class="slds-text-body_small slds-text-color_weak">No results found.</p>
+                            </li>
+                        </template>
+                    </template>
+                </ul>
+            </div>
+        </template>
+        <template if:true={selectedRecord}>
+            <div class="slds-pill slds-m-top_xx-small">
+                <span class="slds-pill__label">{selectedRecord.label}</span>
+                <button class="slds-button slds-button_icon slds-button_icon slds-pill__remove"
+                    onclick={handleClear}>
+                    <lightning-icon icon-name="utility:close" size="x-small"></lightning-icon>
+                </button>
+            </div>
+        </template>
+    </div>
+</template>

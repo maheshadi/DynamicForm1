@@ -1,0 +1,12 @@
+.hr-palette-tile {
+    cursor: grab;
+    background: white;
+    border: 1px solid #dddbda;
+    border-radius: 4px;
+    transition: box-shadow 0.15s ease;
+}
+.hr-palette-tile:hover {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+    border-color: #0070d2;
+}
+.hr-palette-tile:active { cursor: grabbing; }

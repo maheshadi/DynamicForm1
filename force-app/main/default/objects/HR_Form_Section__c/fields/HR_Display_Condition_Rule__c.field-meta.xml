@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>HR_Display_Condition_Rule__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <label>Display Condition Rule</label>
+    <referenceTo>HR_Logic_Rule__c</referenceTo>
+    <relationshipLabel>Conditional Sections</relationshipLabel>
+    <relationshipName>Conditional_Sections</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

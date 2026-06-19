@@ -1,0 +1,35 @@
+<template>
+    <div class="hr-form-footer slds-card slds-card__footer slds-grid slds-grid_align-spread slds-p-around_medium slds-m-top_medium">
+
+        <!-- Left: Cancel -->
+        <button class="slds-button slds-button_neutral" onclick={handleCancel}>
+            Cancel
+        </button>
+
+        <!-- Right: Save Draft + Submit -->
+        <div class="slds-button-group">
+            <template if:true={allowDraftSave}>
+                <button class="slds-button slds-button_outline-brand" onclick={handleSaveDraft}
+                    disabled={isSubmitting}>
+                    <lightning-icon icon-name="utility:save" size="x-small"
+                        class="slds-m-right_x-small"></lightning-icon>
+                    <template if:true={hasDraft}>Continue Draft</template>
+                    <template if:false={hasDraft}>Save Draft</template>
+                </button>
+            </template>
+            <button class="slds-button slds-button_brand" onclick={handleSubmit}
+                disabled={isSubmitting}>
+                <template if:true={isSubmitting}>
+                    <lightning-spinner size="x-small" alternative-text="Submitting…"
+                        class="slds-m-right_x-small"></lightning-spinner>
+                    Submitting…
+                </template>
+                <template if:false={isSubmitting}>
+                    <lightning-icon icon-name="utility:send" size="x-small"
+                        class="slds-m-right_x-small"></lightning-icon>
+                    Submit
+                </template>
+            </button>
+        </div>
+    </div>
+</template>

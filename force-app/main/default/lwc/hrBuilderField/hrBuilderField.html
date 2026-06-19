@@ -1,0 +1,28 @@
+<template>
+    <div class={fieldClass}
+         draggable="true"
+         ondragstart={handleDragStart}
+         ondragover={handleDragOver}
+         ondrop={handleDrop}
+         onclick={handleClick}>
+
+        <div class="slds-grid slds-grid_vertical-align-center slds-p-around_x-small">
+            <lightning-icon icon-name="utility:drag_and_drop" size="x-small"
+                class="hr-drag-handle slds-m-right_x-small"></lightning-icon>
+            <lightning-icon icon-name={fieldIcon} size="x-small"
+                class="slds-m-right_x-small"></lightning-icon>
+            <div class="slds-col">
+                <p class="slds-text-body_small slds-truncate">{field.label}</p>
+                <p class="slds-text-body_small slds-text-color_weak slds-truncate">{field.apiName}</p>
+            </div>
+            <span class="slds-badge slds-m-left_x-small">{field.type}</span>
+            <template if:true={field.required}>
+                <abbr class="slds-required slds-m-left_xx-small" title="required">*</abbr>
+            </template>
+            <button class="slds-button slds-button_icon slds-m-left_x-small"
+                    onclick={handleRemove} title="Remove field">
+                <lightning-icon icon-name="utility:close" size="x-small"></lightning-icon>
+            </button>
+        </div>
+    </div>
+</template>

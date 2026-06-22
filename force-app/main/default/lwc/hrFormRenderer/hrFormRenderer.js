@@ -9,9 +9,9 @@ const START_TIME = Date.now();
 
 export default class HrFormRenderer extends NavigationMixin(LightningElement) {
 
-    @api formApiName  = '';
-    @api recordId     = '';
-    @api submissionId = '';
+    @api formApiName;   // undefined by default → wire won't fire until set
+    @api recordId;
+    @api submissionId;
 
     @track _schema          = null;
     @track _logicBundle     = [];
@@ -45,6 +45,7 @@ export default class HrFormRenderer extends NavigationMixin(LightningElement) {
     }
 
     // ─── Computed ─────────────────────────────────────────────────────────────
+    get hasFormSelected() { return !!(this.formApiName && this.formApiName.trim()); }
     get isReady()        { return !this.isLoading && !this.hasError && !!this._schema; }
     get successMessage() { return this.config.successMessage || 'Your form has been submitted successfully.'; }
 

@@ -1,55 +1,157 @@
 <template>
-    <div class="hr-properties slds-p-around_small">
+    <div class="hr-props-outer">
 
-        <!-- Nothing selected -->
-        <template if:false={hasSelection}>
-            <div class="slds-align_absolute-center slds-p-top_large">
-                <p class="slds-text-body_small slds-text-color_weak">Select a field or section to edit its properties.</p>
-            </div>
-        </template>
+        <!-- Tab bar -->
+        <div class="hr-props-tabs">
+            <button class={tab1Class} data-tab="properties" onclick={handleTabClick}>Properties</button>
+            <button class={tab2Class} data-tab="logic"      onclick={handleTabClick}>Logic</button>
+            <button class={tab3Class} data-tab="style"      onclick={handleTabClick}>Style</button>
+            <button class={tab4Class} data-tab="validation" onclick={handleTabClick}>Validation</button>
+        </div>
 
-        <!-- Form-level settings -->
-        <template if:true={isFormSelected}>
-            <h3 class="slds-text-heading_small slds-m-bottom_small">Form Settings</h3>
-            <lightning-input label="Form Name" value={formSchema.name} data-field="name" onchange={handleFormChange}></lightning-input>
-            <lightning-input label="API Name"  value={formSchema.apiName} data-field="apiName" onchange={handleFormChange} class="slds-m-top_x-small"></lightning-input>
-            <lightning-combobox label="Category" value={formSchema.category} options={categoryOptions} data-field="category" onchange={handleFormChange} class="slds-m-top_x-small"></lightning-combobox>
-            <lightning-textarea label="Description" value={formSchema.description} data-field="description" onchange={handleFormChange} class="slds-m-top_x-small"></lightning-textarea>
-            <lightning-input label="Tags (comma-separated)" value={formSchema.tags} data-field="tags" onchange={handleFormChange} class="slds-m-top_x-small"></lightning-input>
-            <lightning-combobox label="On Submit Action" value={formSchema.onSubmitAction} options={submitActionOptions} data-field="onSubmitAction" onchange={handleFormChange} class="slds-m-top_x-small"></lightning-combobox>
-            <lightning-input type="toggle" label="Allow Draft Save" checked={formSchema.allowDraftSave} data-field="allowDraftSave" onchange={handleFormToggle} class="slds-m-top_x-small"></lightning-input>
-            <lightning-input type="toggle" label="Require Confirmation Step" checked={formSchema.requireConfirmation} data-field="requireConfirmation" onchange={handleFormToggle} class="slds-m-top_x-small"></lightning-input>
-            <div class="slds-m-top_medium">
-                <button class="slds-button slds-button_outline-brand slds-button_stretch" onclick={handleRulesClick}>
-                    <lightning-icon icon-name="utility:settings" size="x-small" class="slds-m-right_x-small"></lightning-icon>
-                    Logic Rules &amp; Publish
-                </button>
-            </div>
-        </template>
+        <div class="hr-props-body">
 
-        <!-- Section properties -->
-        <template if:true={isSectionSelected}>
-            <h3 class="slds-text-heading_small slds-m-bottom_small">Section Properties</h3>
-            <lightning-input label="Section Title" value={selectedSection.title} data-field="title" onchange={handleSectionChange}></lightning-input>
-            <lightning-combobox label="Columns" value={selectedSectionColumns} options={columnOptions} data-field="columns" onchange={handleSectionChange} class="slds-m-top_x-small"></lightning-combobox>
-            <lightning-input type="toggle" label="Collapsible" checked={selectedSection.collapsible} data-field="collapsible" onchange={handleSectionToggle} class="slds-m-top_x-small"></lightning-input>
-            <lightning-input type="toggle" label="Initially Collapsed" checked={selectedSection.initiallyCollapsed} data-field="initiallyCollapsed" onchange={handleSectionToggle} class="slds-m-top_x-small"></lightning-input>
-            <lightning-textarea label="Help Text" value={selectedSection.helpText} data-field="helpText" onchange={handleSectionChange} class="slds-m-top_x-small"></lightning-textarea>
-        </template>
+            <!-- ══════════════ PROPERTIES TAB ══════════════ -->
+            <template if:true={isPropertiesTab}>
 
-        <!-- Field properties -->
-        <template if:true={isFieldSelected}>
-            <h3 class="slds-text-heading_small slds-m-bottom_small">Field Properties</h3>
-            <div class="slds-badge slds-m-bottom_small">{selectedField.type}</div>
-            <lightning-input label="Label"    value={selectedField.label}   data-field="label"   onchange={handleFieldChange}></lightning-input>
-            <lightning-input label="API Name" value={selectedField.apiName} data-field="apiName" onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-input>
-            <lightning-combobox label="Column Span" value={selectedField.columnSpan} options={spanOptions} data-field="columnSpan" onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-combobox>
-            <lightning-input type="toggle" label="Required"  checked={selectedField.required}  data-field="required"  onchange={handleFieldToggle} class="slds-m-top_x-small"></lightning-input>
-            <lightning-input type="toggle" label="Read Only" checked={selectedField.readOnly}   data-field="readOnly"  onchange={handleFieldToggle} class="slds-m-top_x-small"></lightning-input>
-            <lightning-input label="Placeholder"   value={selectedField.placeholder}   data-field="placeholder"   onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-input>
-            <lightning-input label="Default Value"  value={selectedField.defaultValue}  data-field="defaultValue"  onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-input>
-            <lightning-textarea label="Help Text"   value={selectedField.helpText}       data-field="helpText"      onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-textarea>
-            <lightning-input label="SF Field API Name" value={selectedField.sfFieldApi} data-field="sfFieldApi" onchange={handleFieldChange} class="slds-m-top_x-small" placeholder="e.g. Employee_NUID__c"></lightning-input>
-        </template>
+                <!-- Nothing selected -->
+                <template if:false={hasSelection}>
+                    <div class="hr-props-empty">
+                        <lightning-icon icon-name="utility:touch_action" size="medium" variant="brand"></lightning-icon>
+                        <p>Select a field or section on the canvas to edit its properties.</p>
+                    </div>
+                </template>
+
+                <!-- Form-level settings -->
+                <template if:true={isFormSelected}>
+                    <div class="hr-props-section-title">Form Settings</div>
+                    <lightning-input label="Form Name"   value={formSchema.name}    data-field="name"    onchange={handleFormChange}></lightning-input>
+                    <lightning-input label="API Name"    value={formSchema.apiName} data-field="apiName" onchange={handleFormChange} class="slds-m-top_x-small"></lightning-input>
+                    <lightning-combobox label="Category" value={formSchema.category} options={categoryOptions} data-field="category" onchange={handleFormChange} class="slds-m-top_x-small"></lightning-combobox>
+                    <lightning-textarea label="Description" value={formSchema.description} data-field="description" onchange={handleFormChange} class="slds-m-top_x-small"></lightning-textarea>
+                    <lightning-input label="Tags (comma-separated)" value={formSchema.tags} data-field="tags" onchange={handleFormChange} class="slds-m-top_x-small"></lightning-input>
+                    <lightning-combobox label="On Submit Action" value={formSchema.onSubmitAction} options={submitActionOptions} data-field="onSubmitAction" onchange={handleFormChange} class="slds-m-top_x-small"></lightning-combobox>
+                    <lightning-input type="toggle" label="Allow Draft Save"        checked={formSchema.allowDraftSave}      data-field="allowDraftSave"      onchange={handleFormToggle} class="slds-m-top_x-small"></lightning-input>
+                    <lightning-input type="toggle" label="Require Confirmation"    checked={formSchema.requireConfirmation} data-field="requireConfirmation" onchange={handleFormToggle} class="slds-m-top_x-small"></lightning-input>
+                </template>
+
+                <!-- Section properties -->
+                <template if:true={isSectionSelected}>
+                    <div class="hr-props-section-title">
+                        <lightning-icon icon-name="utility:section" size="x-small"></lightning-icon>&nbsp;Section
+                    </div>
+                    <lightning-input label="Title" value={selectedSection.title} data-field="title" onchange={handleSectionChange}></lightning-input>
+                    <lightning-combobox label="Columns" value={selectedSectionColumns} options={columnOptions} data-field="columns" onchange={handleSectionChange} class="slds-m-top_x-small"></lightning-combobox>
+                    <lightning-input type="toggle" label="Collapsible"        checked={selectedSection.collapsible}        data-field="collapsible"        onchange={handleSectionToggle} class="slds-m-top_x-small"></lightning-input>
+                    <lightning-input type="toggle" label="Initially Collapsed" checked={selectedSection.initiallyCollapsed} data-field="initiallyCollapsed" onchange={handleSectionToggle} class="slds-m-top_x-small"></lightning-input>
+                    <lightning-textarea label="Help Text" value={selectedSection.helpText} data-field="helpText" onchange={handleSectionChange} class="slds-m-top_x-small"></lightning-textarea>
+                </template>
+
+                <!-- Field properties -->
+                <template if:true={isFieldSelected}>
+                    <div class="hr-props-section-title">
+                        <span class="hr-field-type-badge">{selectedField.type}</span>
+                    </div>
+                    <lightning-input label="Label"    value={selectedField.label}   data-field="label"   onchange={handleFieldChange}></lightning-input>
+                    <lightning-input label="API Name" value={selectedField.apiName} data-field="apiName" onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-input>
+                    <lightning-combobox label="Column Span" value={selectedField.columnSpan} options={spanOptions} data-field="columnSpan" onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-combobox>
+                    <lightning-input type="toggle" label="Required"  checked={selectedField.required}  data-field="required"  onchange={handleFieldToggle} class="slds-m-top_x-small"></lightning-input>
+                    <lightning-input type="toggle" label="Read Only" checked={selectedField.readOnly}  data-field="readOnly"  onchange={handleFieldToggle} class="slds-m-top_x-small"></lightning-input>
+                    <lightning-input label="Placeholder"    value={selectedField.placeholder}   data-field="placeholder"   onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-input>
+                    <lightning-input label="Default Value"  value={selectedField.defaultValue}  data-field="defaultValue"  onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-input>
+                    <lightning-textarea label="Help Text"   value={selectedField.helpText}       data-field="helpText"      onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-textarea>
+                    <lightning-input label="SF Field Mapping" value={selectedField.sfFieldApi}  data-field="sfFieldApi"    onchange={handleFieldChange} class="slds-m-top_x-small" placeholder="e.g. Employee_NUID__c"></lightning-input>
+                </template>
+            </template>
+
+            <!-- ══════════════ LOGIC TAB ══════════════ -->
+            <template if:true={isLogicTab}>
+                <template if:false={isFieldSelected}>
+                    <div class="hr-props-empty">
+                        <lightning-icon icon-name="utility:formula" size="medium" variant="brand"></lightning-icon>
+                        <p>Select a field to add conditional logic to it.</p>
+                        <button class="hr-link-btn slds-m-top_small" onclick={handleRulesClick}>
+                            Open full Logic Rules editor →
+                        </button>
+                    </div>
+                </template>
+                <template if:true={isFieldSelected}>
+                    <div class="hr-props-section-title">
+                        <lightning-icon icon-name="utility:formula" size="x-small"></lightning-icon>
+                        &nbsp;Visibility Rules for "{selectedField.label}"
+                    </div>
+                    <template if:false={hasFieldRules}>
+                        <div class="hr-props-hint">No rules for this field yet.</div>
+                    </template>
+                    <template for:each={fieldRules} for:item="rule">
+                        <div key={rule.id} class="hr-rule-chip">
+                            <span class="hr-rule-action-badge" style={rule.actionStyle}>{rule.action}</span>
+                            <span class="hr-rule-desc">when <strong>{rule.triggerFieldApiName}</strong> {rule.operator} <em>{rule.triggerValue}</em></span>
+                            <button class="hr-icon-btn" data-id={rule.id} onclick={handleRemoveFieldRule} title="Remove rule">✕</button>
+                        </div>
+                    </template>
+                    <div class="slds-m-top_small">
+                        <button class="slds-button slds-button_neutral slds-button_stretch" onclick={handleAddFieldRule}>+ Add Rule for This Field</button>
+                    </div>
+                    <div class="slds-m-top_x-small">
+                        <button class="hr-link-btn" onclick={handleRulesClick}>Open full Logic Rules editor →</button>
+                    </div>
+                </template>
+            </template>
+
+            <!-- ══════════════ STYLE TAB ══════════════ -->
+            <template if:true={isStyleTab}>
+                <template if:false={isFieldSelected}>
+                    <div class="hr-props-empty">
+                        <lightning-icon icon-name="utility:brush" size="medium" variant="brand"></lightning-icon>
+                        <p>Select a field to customize its appearance.</p>
+                    </div>
+                </template>
+                <template if:true={isFieldSelected}>
+                    <div class="hr-props-section-title">
+                        <lightning-icon icon-name="utility:brush" size="x-small"></lightning-icon>
+                        &nbsp;Style — {selectedField.label}
+                    </div>
+                    <lightning-combobox label="Label Position" value={selectedField.labelPosition} options={labelPositionOptions} data-field="labelPosition" onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-combobox>
+                    <lightning-combobox label="Field Size"     value={selectedField.fieldSize}     options={fieldSizeOptions}     data-field="fieldSize"     onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-combobox>
+                    <lightning-input   label="Custom CSS Class" value={selectedField.cssClass}     data-field="cssClass"          onchange={handleFieldChange} class="slds-m-top_x-small" placeholder="e.g. my-highlight-field"></lightning-input>
+                    <lightning-input   label="Label Color" type="color" value={selectedField.labelColor} data-field="labelColor"  onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-input>
+                    <lightning-input type="toggle" label="Hide Label"    checked={selectedField.hideLabel}    data-field="hideLabel"    onchange={handleFieldToggle} class="slds-m-top_x-small"></lightning-input>
+                    <lightning-input type="toggle" label="Highlight Row" checked={selectedField.highlightRow} data-field="highlightRow" onchange={handleFieldToggle} class="slds-m-top_x-small"></lightning-input>
+                </template>
+            </template>
+
+            <!-- ══════════════ VALIDATION TAB ══════════════ -->
+            <template if:true={isValidationTab}>
+                <template if:false={isFieldSelected}>
+                    <div class="hr-props-empty">
+                        <lightning-icon icon-name="utility:check" size="medium" variant="brand"></lightning-icon>
+                        <p>Select a field to configure validation rules.</p>
+                    </div>
+                </template>
+                <template if:true={isFieldSelected}>
+                    <div class="hr-props-section-title">
+                        <lightning-icon icon-name="utility:check" size="x-small"></lightning-icon>
+                        &nbsp;Validation — {selectedField.label}
+                    </div>
+                    <lightning-input label="Min Length"    type="number" value={selectedField.minLength}    data-field="minLength"    onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-input>
+                    <lightning-input label="Max Length"    type="number" value={selectedField.maxLength}    data-field="maxLength"    onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-input>
+                    <lightning-input label="Min Value"     type="number" value={selectedField.minValue}     data-field="minValue"     onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-input>
+                    <lightning-input label="Max Value"     type="number" value={selectedField.maxValue}     data-field="maxValue"     onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-input>
+                    <lightning-input label="Pattern (regex)" value={selectedField.pattern}  data-field="pattern"  onchange={handleFieldChange} class="slds-m-top_x-small" placeholder="e.g. ^[A-Z]{1}[0-9]{6}$"></lightning-input>
+                    <lightning-textarea label="Custom Error Message" value={selectedField.validationMessage} data-field="validationMessage" onchange={handleFieldChange} class="slds-m-top_x-small" placeholder="This field is invalid."></lightning-textarea>
+                    <lightning-input type="toggle" label="Validate on Blur" checked={selectedField.validateOnBlur} data-field="validateOnBlur" onchange={handleFieldToggle} class="slds-m-top_x-small"></lightning-input>
+                </template>
+            </template>
+
+        </div><!-- /hr-props-body -->
+
+        <!-- Logic Rules footer button always visible -->
+        <div class="hr-props-footer">
+            <button class="slds-button slds-button_outline-brand slds-button_stretch" onclick={handleRulesClick}>
+                <lightning-icon icon-name="utility:settings" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                Logic Rules &amp; Publish
+            </button>
+        </div>
     </div>
 </template>

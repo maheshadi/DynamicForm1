@@ -40,6 +40,13 @@ export default class HrFormBuilder extends LightningElement {
     }
 
     connectedCallback() {
+        // Pick up form selected from the Form Library
+        const pendingApiName = sessionStorage.getItem('hrfc_editFormApiName');
+        if (pendingApiName) {
+            sessionStorage.removeItem('hrfc_editFormApiName');
+            sessionStorage.removeItem('hrfc_editFormId');
+            this._loadForm(pendingApiName);
+        }
         this._startAutoSave();
     }
 
@@ -169,6 +176,21 @@ export default class HrFormBuilder extends LightningElement {
 
     handleRulesClick()  { this.showRulesEditor = true; }
     handleCloseRules()  { this.showRulesEditor = false; }
+
+    async handleSaveAndCloseRules() {
+        this.isSaving = true;
+        try {
+            await this._saveDraft();
+            this._toast('Logic rules saved.', 'success');
+            this.showRulesEditor = false;
+        } catch (e) {
+            this._toast('Save failed: ' + this._errorMessage(e), 'error');
+        } finally {
+            this.isSaving = false;
+        }
+    }
+
+    get saveRulesLabel() { return this.isSaving ? 'Saving…' : 'Save Rules'; }
     handlePreview()     { this._toast('Preview mode coming soon.', 'info'); }
 
     async handleSaveDraft() {
@@ -210,8 +232,9 @@ export default class HrFormBuilder extends LightningElement {
     }
 
     async _saveDraft() {
+        // Pass as plain object — Apex Map<String,Object> requires object, NOT JSON.stringify wrapper
         return saveFormApex({
-            formData: JSON.stringify({
+            formData: {
                 id:                  this.formSchema.id,
                 name:                this.formSchema.name,
                 apiName:             this.formSchema.apiName,
@@ -227,7 +250,7 @@ export default class HrFormBuilder extends LightningElement {
                 allowDraftSave:      this.formSchema.allowDraftSave,
                 requireConfirmation: this.formSchema.requireConfirmation,
                 recordTypeDevName:   this.formSchema.recordTypeDevName
-            })
+            }
         });
     }
 

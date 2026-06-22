@@ -111,7 +111,7 @@ public with sharing class HR_SchemaValidator {
         seenApiNames.add(apiName);
 
         String fieldType = (String) field.get('type');
-        if (String.isBlank(fieldType) || !validFieldTypes.contains(fieldType)) {
+        if (String.isBlank(fieldType) || !validFieldTypes.contains(fieldType.toLowerCase())) {
             errors.add(new ValidationError('field.' + apiName,
                 'Unknown field type: ' + fieldType));
         }
@@ -186,19 +186,24 @@ public with sharing class HR_SchemaValidator {
 
     private static Set<String> getValidFieldTypes() {
         Set<String> types = new Set<String>();
+        // Load from CMDT (case-insensitive — store lowercase)
         for (HR_Field_Type_Config__mdt ftc : [
             SELECT HR_Type_API__c FROM HR_Field_Type_Config__mdt
             WHERE HR_Is_Active__c = true
         ]) {
-            types.add(ftc.HR_Type_API__c);
+            if (String.isNotBlank(ftc.HR_Type_API__c)) {
+                types.add(ftc.HR_Type_API__c.toLowerCase());
+            }
         }
-        // Fallback if CMT not yet seeded
+        // Hardcoded fallback — covers both PascalCase and lowercase variants
         if (types.isEmpty()) {
             types.addAll(new Set<String>{
-                'Text','Number','Currency','Date','DateTime','Email','Phone',
-                'URL','TextArea','RichText','Dropdown','Radio','Checkbox',
-                'MultiSelect','Lookup','CurrentUser','RecordField',
-                'FileUpload','InfoBox','Instructions','Divider'
+                'text_input','text','number','currency','date_picker','date','datetime',
+                'email','phone','url','text_area','textarea','rich_text','richtext',
+                'dropdown','radio_group','radio','checkbox','multi_select','multiselect',
+                'lookup','current_user','currentuser','record_field','recordfield',
+                'section_header','sectionheader','info_block','infobox','instructions',
+                'divider','file_upload','fileupload','percentage'
             });
         }
         return types;

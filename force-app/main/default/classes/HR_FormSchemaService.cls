@@ -30,16 +30,18 @@ public with sharing class HR_FormSchemaService {
 
     @AuraEnabled(cacheable=true)
     public static List<HR_Form__c> getFormLibrary(String category, String status) {
-        String baseStatus = String.isBlank(status) ? 'Published' : status;
+        String baseStatus = status;
         String soql = 'SELECT Id, Name, HR_API_Name__c, HR_Status__c, HR_Category__c, '
                     + 'HR_Version__c, HR_Tags__c, HR_Description__c, '
-                    + 'HR_Last_Published_Date__c, HR_Total_Submissions__c '
-                    + 'FROM HR_Form__c '
-                    + 'WHERE HR_Status__c = :baseStatus ';
+                    + 'HR_Last_Published_Date__c, HR_Total_Submissions__c, LastModifiedDate '
+                    + 'FROM HR_Form__c WHERE Id != null ';
+        if (String.isNotBlank(baseStatus)) {
+            soql += 'AND HR_Status__c = :baseStatus ';
+        }
         if (String.isNotBlank(category)) {
             soql += 'AND HR_Category__c = :category ';
         }
-        soql += 'WITH SECURITY_ENFORCED ORDER BY Name ASC';
+        soql += 'WITH SECURITY_ENFORCED ORDER BY LastModifiedDate DESC';
         return Database.query(soql);
     }
 

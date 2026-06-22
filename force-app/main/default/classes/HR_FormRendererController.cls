@@ -7,6 +7,10 @@ public with sharing class HR_FormRendererController {
 
     @AuraEnabled(cacheable=true)
     public static Map<String, Object> getFormSchema(String formApiName) {
+        // Guard: reject blank / null formApiName before any query
+        if (String.isBlank(formApiName)) {
+            throw new AuraHandledException('formApiName is required');
+        }
         // 1. Validate access
         HR_AccessService.assertCanView(formApiName);
 
@@ -34,7 +38,9 @@ public with sharing class HR_FormRendererController {
 
         // 4. Return schema + logic bundle + config
         return new Map<String, Object>{
-            'schema'      => JSON.deserializeUntyped(form.HR_Published_Schema_JSON__c),
+            'schema'      => String.isBlank(form.HR_Published_Schema_JSON__c)
+                              ? new Map<String, Object>{ 'sections' => new List<Object>() }
+                              : JSON.deserializeUntyped(form.HR_Published_Schema_JSON__c),
             'logicBundle' => JSON.deserializeUntyped(logicBundle),
             'config'      => getFormConfig(form)
         };

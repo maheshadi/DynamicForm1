@@ -144,6 +144,34 @@
     </types>
     <types>
         <members>HR_Builder_Config.Default</members>
+        <members>HR_Field_Type_Config.Checkbox</members>
+        <members>HR_Field_Type_Config.Currency</members>
+        <members>HR_Field_Type_Config.Current_User</members>
+        <members>HR_Field_Type_Config.DateTime</members>
+        <members>HR_Field_Type_Config.Date_Picker</members>
+        <members>HR_Field_Type_Config.Divider</members>
+        <members>HR_Field_Type_Config.Dropdown</members>
+        <members>HR_Field_Type_Config.Email</members>
+        <members>HR_Field_Type_Config.File_Upload</members>
+        <members>HR_Field_Type_Config.Info_Block</members>
+        <members>HR_Field_Type_Config.Lookup</members>
+        <members>HR_Field_Type_Config.Multi_Select</members>
+        <members>HR_Field_Type_Config.Number</members>
+        <members>HR_Field_Type_Config.Percentage</members>
+        <members>HR_Field_Type_Config.Phone</members>
+        <members>HR_Field_Type_Config.Radio_Group</members>
+        <members>HR_Field_Type_Config.Record_Field</members>
+        <members>HR_Field_Type_Config.Rich_Text</members>
+        <members>HR_Field_Type_Config.Section_Header</members>
+        <members>HR_Field_Type_Config.Text_Area</members>
+        <members>HR_Field_Type_Config.Text_Input</members>
+        <members>HR_Field_Type_Config.URL</members>
+        <members>HR_Field_Type_Config.date</members>
+        <members>HR_Field_Type_Config.dropdown</members>
+        <members>HR_Field_Type_Config.email</members>
+        <members>HR_Field_Type_Config.radio</members>
+        <members>HR_Field_Type_Config.text</members>
+        <members>HR_Field_Type_Config.textarea</members>
         <members>HR_Object_Whitelist.Case</members>
         <members>HR_Object_Whitelist.Contact</members>
         <members>HR_Object_Whitelist.User</members>
@@ -199,6 +227,7 @@
         <members>hrFormBuilder</members>
         <members>hrFormField</members>
         <members>hrFormFooter</members>
+        <members>hrFormLibrary</members>
         <members>hrFormRenderer</members>
         <members>hrFormSection</members>
         <members>hrLogicEngine</members>

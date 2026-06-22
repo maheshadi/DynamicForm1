@@ -89,6 +89,10 @@
                         onruleupdated={handleRuleUpdated}>
                     </c-hr-builder-rule-editor>
                 </div>
+                <footer class="slds-modal__footer">
+                    <button class="slds-button slds-button_neutral" onclick={handleCloseRules}>Cancel</button>
+                    <button class="slds-button slds-button_brand" onclick={handleSaveAndCloseRules} disabled={isSaving}>{saveRulesLabel}</button>
+                </footer>
             </div>
         </div>
     </template>

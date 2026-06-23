@@ -155,7 +155,7 @@ public with sharing class HR_SchemaValidator {
         // Block dangerous keywords
         List<String> blocked = new List<String>{
             'DELETE', 'INSERT', 'UPDATE', 'UPSERT', 'MERGE',
-            'DROP', 'CREATE', 'ALTER', '$USER', 'UNION'
+            'DROP', 'CREATE', 'ALTER', '$USER', 'UNION', 'SELECT'
         };
         for (String kw : blocked) {
             if (upper.contains(kw)) {

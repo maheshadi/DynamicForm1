@@ -30,7 +30,7 @@ public with sharing class HR_FormSchemaService {
 
     @AuraEnabled(cacheable=true)
     public static List<HR_Form__c> getFormLibrary(String category, String status) {
-        String baseStatus = status;
+        String baseStatus = String.isBlank(status) ? 'Published' : status;
         String soql = 'SELECT Id, Name, HR_API_Name__c, HR_Status__c, HR_Category__c, '
                     + 'HR_Version__c, HR_Tags__c, HR_Description__c, '
                     + 'HR_Last_Published_Date__c, HR_Total_Submissions__c, LastModifiedDate '
@@ -83,18 +83,23 @@ public with sharing class HR_FormSchemaService {
             String.isNotBlank(formId) ? AccessType.UPDATABLE : AccessType.CREATABLE,
             new List<SObject>{ form }
         );
-        upsert decision.getRecords()[0];
+        SObject saved = decision.getRecords()[0];
+        upsert saved;
+        String savedId = (String) saved.get('Id');
 
         HR_AuditService.logAsync(
             String.isNotBlank(formId) ? 'Form_Modified' : 'Form_Created',
-            form.Id, null
+            savedId, null
         );
 
-        return form.Id;
+        return savedId;
     }
 
     @AuraEnabled
     public static void deleteForm(String formId) {
+        if (!FeatureManagement.checkPermission('HR_Form_Admin')) {
+            throw new AuraHandledException('Administrator permission required to delete forms.');
+        }
         HR_Form__c form = [SELECT Id FROM HR_Form__c WHERE Id = :formId WITH SECURITY_ENFORCED LIMIT 1];
         HR_AuditService.logAsync('Form_Deleted', formId, null);
         delete form;
@@ -115,11 +120,15 @@ public with sharing class HR_FormSchemaService {
         clone.Name           = 'Copy of ' + src.Name;
         clone.HR_API_Name__c = src.HR_API_Name__c + '_copy_' + String.valueOf(Datetime.now().getTime());
         clone.HR_Status__c   = 'Draft';
-        clone.HR_Version__c  = 0;
-        insert clone;
+        clone.HR_Version__c  = 1;
 
-        HR_AuditService.logAsync('Form_Cloned', clone.Id, null);
-        return clone.Id;
+        SObjectAccessDecision dec = Security.stripInaccessible(AccessType.CREATABLE, new List<SObject>{ clone });
+        SObject inserted = dec.getRecords()[0];
+        insert inserted;
+        String cloneId = (String) inserted.get('Id');
+
+        HR_AuditService.logAsync('Form_Cloned', cloneId, null);
+        return cloneId;
     }
 
     // ─── Field ordering ────────────────────────────────────────────────────────

@@ -5,13 +5,13 @@ import submitFormApex  from '@salesforce/apex/HR_SubmissionService.submitForm';
 import saveDraftApex   from '@salesforce/apex/HR_SubmissionService.saveDraft';
 import { evaluateRules } from 'c/hrLogicEngine';
 
-const START_TIME = Date.now();
-
 export default class HrFormRenderer extends NavigationMixin(LightningElement) {
 
     @api formApiName;   // undefined by default → wire won't fire until set
     @api recordId;
     @api submissionId;
+
+    _startTime = null;  // set when schema loads so duration reflects actual fill time
 
     @track _schema          = null;
     @track _logicBundle     = [];
@@ -35,6 +35,7 @@ export default class HrFormRenderer extends NavigationMixin(LightningElement) {
             this._schema      = data.schema;
             this._logicBundle = data.logicBundle || [];
             this.config       = data.config || {};
+            this._startTime   = Date.now();
             this._initVisibility();
             this.isLoading = false;
         } else if (error) {
@@ -161,7 +162,7 @@ export default class HrFormRenderer extends NavigationMixin(LightningElement) {
     async _doSubmit() {
         this.isSubmitting = true;
         try {
-            const durationSec = Math.round((Date.now() - START_TIME) / 1000);
+            const durationSec = this._startTime ? Math.round((Date.now() - this._startTime) / 1000) : 0;
             await submitFormApex({
                 formApiName: this.formApiName,
                 payloadJSON: JSON.stringify(this.fieldValues),

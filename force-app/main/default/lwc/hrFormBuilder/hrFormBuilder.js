@@ -1,7 +1,7 @@
 import { LightningElement, track, wire } from 'lwc';
 import { CurrentPageReference } from 'lightning/navigation';
-import getHRBuilderConfig from '@salesforce/apex/HR_FormRendererController.getFormSchema';
-import saveFormApex      from '@salesforce/apex/HR_FormSchemaService.saveForm';
+import getFormApex   from '@salesforce/apex/HR_FormSchemaService.getForm';
+import saveFormApex  from '@salesforce/apex/HR_FormSchemaService.saveForm';
 import publishFormApex   from '@salesforce/apex/HR_PublishService.publishForm';
 import hasAdminPermission from '@salesforce/customPermission/HR_Form_Admin';
 
@@ -222,9 +222,27 @@ export default class HrFormBuilder extends LightningElement {
     // ─── Private helpers ──────────────────────────────────────────────────────
     async _loadForm(apiName) {
         try {
-            const data = await getHRBuilderConfig({ formApiName: apiName });
-            if (data && data.schema) {
-                this.formSchema = { ...data.schema, apiName };
+            const rec = await getFormApex({ formApiName: apiName });
+            if (rec) {
+                const savedSchema = rec.HR_Schema_JSON__c ? JSON.parse(rec.HR_Schema_JSON__c) : {};
+                this.formSchema = {
+                    ...savedSchema,
+                    id:                  rec.Id,
+                    name:                rec.Name                       || savedSchema.name,
+                    apiName:             rec.HR_API_Name__c             || apiName,
+                    status:              rec.HR_Status__c               || savedSchema.status,
+                    category:            rec.HR_Category__c             || savedSchema.category,
+                    description:         rec.HR_Description__c         || savedSchema.description,
+                    tags:                rec.HR_Tags__c                 || savedSchema.tags,
+                    targetObjectApi:     rec.HR_Target_Object_API__c   || savedSchema.targetObjectApi,
+                    deploymentTarget:    rec.HR_Deployment_Target__c   || savedSchema.deploymentTarget,
+                    onSubmitAction:      rec.HR_On_Submit_Action__c     || savedSchema.onSubmitAction,
+                    successMessage:      rec.HR_Success_Message__c      || savedSchema.successMessage,
+                    redirectUrl:         rec.HR_Redirect_URL__c         || savedSchema.redirectUrl,
+                    allowDraftSave:      rec.HR_Allow_Draft_Save__c     != null ? rec.HR_Allow_Draft_Save__c     : savedSchema.allowDraftSave,
+                    requireConfirmation: rec.HR_Require_Confirmation__c != null ? rec.HR_Require_Confirmation__c : savedSchema.requireConfirmation,
+                    recordTypeDevName:   rec.HR_Record_Type_Dev_Name__c || savedSchema.recordTypeDevName
+                };
             }
         } catch (e) {
             this._toast('Could not load form: ' + this._errorMessage(e), 'error');
@@ -233,7 +251,7 @@ export default class HrFormBuilder extends LightningElement {
 
     async _saveDraft() {
         // Pass as plain object — Apex Map<String,Object> requires object, NOT JSON.stringify wrapper
-        return saveFormApex({
+        const savedId = await saveFormApex({
             formData: {
                 id:                  this.formSchema.id,
                 name:                this.formSchema.name,
@@ -252,13 +270,20 @@ export default class HrFormBuilder extends LightningElement {
                 recordTypeDevName:   this.formSchema.recordTypeDevName
             }
         });
+        // Store the Id returned for new records so subsequent saves update, not duplicate
+        if (savedId && !this.formSchema.id) {
+            this.formSchema = { ...this.formSchema, id: savedId };
+        }
+        return savedId;
     }
 
     _startAutoSave() {
         if (this._autoSaveTimer) clearInterval(this._autoSaveTimer);
         this._autoSaveTimer = setInterval(() => {
             if (!this.isSaving && this.formSchema.apiName) {
-                this._saveDraft().catch(() => {});
+                this._saveDraft().catch(e => {
+                    console.error('[HR Form Builder] Auto-save failed:', this._errorMessage(e));
+                });
             }
         }, this._autoSaveIntervalSec * 1000);
     }

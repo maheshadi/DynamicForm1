@@ -41,7 +41,7 @@ public with sharing class HR_FormRendererController {
             'schema'      => String.isBlank(form.HR_Published_Schema_JSON__c)
                               ? new Map<String, Object>{ 'sections' => new List<Object>() }
                               : JSON.deserializeUntyped(form.HR_Published_Schema_JSON__c),
-            'logicBundle' => JSON.deserializeUntyped(logicBundle),
+            'logicBundle' => String.isBlank(logicBundle) ? new List<Object>() : JSON.deserializeUntyped(logicBundle),
             'config'      => getFormConfig(form)
         };
     }

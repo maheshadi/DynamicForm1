@@ -101,23 +101,23 @@ public without sharing class HR_FormDataMigrationBatch implements Database.Batch
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
-    private static Map<String, Object> parseSchema(String json) {
-        if (String.isBlank(json)) {
+    private static Map<String, Object> parseSchema(String schemaJson) {
+        if (String.isBlank(schemaJson)) {
             return new Map<String, Object>{
                 'sections' => new List<Object>(),
                 'rules'    => new List<Object>()
             };
         }
-        return (Map<String, Object>) JSON.deserializeUntyped(json);
+        return (Map<String, Object>) JSON.deserializeUntyped(schemaJson);
     }
 
     private static List<Object> buildRuleList(List<HR_Logic_Rule__c> rules) {
-        List<Object> list_ = new List<Object>();
+        List<Object> ruleList = new List<Object>();
         for (HR_Logic_Rule__c r : rules) {
             String targetApi = r.HR_Target_Type__c == 'Field'
                 ? r.HR_Target_Field__r.HR_API_Name__c
                 : r.HR_Target_Section__r.Name;
-            list_.add(new Map<String, Object>{
+            ruleList.add(new Map<String, Object>{
                 'id'                  => r.Id,
                 'name'                => r.Name,
                 'triggerFieldApiName' => r.HR_Trigger_Field__r.HR_API_Name__c,
@@ -130,7 +130,7 @@ public without sharing class HR_FormDataMigrationBatch implements Database.Batch
                 'logicGroup'          => r.HR_Logic_Group__c
             });
         }
-        return list_;
+        return ruleList;
     }
 
     private static void mergeSfFieldApi(Map<String, Object> schema, Map<String, String> sfMap) {

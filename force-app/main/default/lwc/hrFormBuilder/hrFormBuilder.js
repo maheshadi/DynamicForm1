@@ -225,6 +225,13 @@ export default class HrFormBuilder extends LightningElement {
             const rec = await getFormApex({ formApiName: apiName });
             if (rec) {
                 const savedSchema = rec.HR_Schema_JSON__c ? JSON.parse(rec.HR_Schema_JSON__c) : {};
+                // If the draft has no sections, seed from published schema so the builder
+                // shows all fields that are visible in preview.
+                if ((!savedSchema.sections || savedSchema.sections.length === 0) && rec.HR_Published_Schema_JSON__c) {
+                    const pub = JSON.parse(rec.HR_Published_Schema_JSON__c);
+                    savedSchema.sections = pub.sections || [];
+                    savedSchema.rules    = pub.rules    || savedSchema.rules || [];
+                }
                 this.formSchema = {
                     ...savedSchema,
                     id:                  rec.Id,

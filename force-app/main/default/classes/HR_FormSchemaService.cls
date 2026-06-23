@@ -7,7 +7,7 @@ public with sharing class HR_FormSchemaService {
 
     // ─── Get ───────────────────────────────────────────────────────────────────
 
-    @AuraEnabled(cacheable=true)
+    @AuraEnabled
     public static HR_Form__c getForm(String formApiName) {
         List<HR_Form__c> forms = [
             SELECT Id, Name, HR_API_Name__c, HR_Status__c, HR_Category__c,

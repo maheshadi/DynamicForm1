@@ -67,15 +67,17 @@
                         </c-hr-form-section>
                     </template>
 
-                    <!-- Footer -->
-                    <c-hr-form-footer
-                        allow-draft-save={config.allowDraftSave}
-                        is-submitting={isSubmitting}
-                        has-draft={hasDraft}
-                        onsubmit={handleSubmit}
-                        onsavedraft={handleSaveDraft}
-                        oncancel={handleCancel}>
-                    </c-hr-form-footer>
+                    <!-- Footer (hidden when a parent modal supplies its own) -->
+                    <template if:false={hideFooter}>
+                        <c-hr-form-footer
+                            allow-draft-save={config.allowDraftSave}
+                            is-submitting={isSubmitting}
+                            has-draft={hasDraft}
+                            onsubmit={handleSubmit}
+                            onsavedraft={handleSaveDraft}
+                            oncancel={handleCancel}>
+                        </c-hr-form-footer>
+                    </template>
                 </template>
             </template>
         </template>

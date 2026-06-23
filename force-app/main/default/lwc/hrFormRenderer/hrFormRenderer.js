@@ -7,9 +7,10 @@ import { evaluateRules } from 'c/hrLogicEngine';
 
 export default class HrFormRenderer extends NavigationMixin(LightningElement) {
 
-    @api formApiName;   // undefined by default → wire won't fire until set
+    @api formApiName;      // undefined by default → wire won't fire until set
     @api recordId;
     @api submissionId;
+    @api hideFooter = false;  // set by modal parents that supply their own footer
 
     _startTime = null;  // set when schema loads so duration reflects actual fill time
 
@@ -77,6 +78,17 @@ export default class HrFormRenderer extends NavigationMixin(LightningElement) {
         this._runLogicEngine();
     }
 
+    // ─── Public API (for modal parents) ──────────────────────────────────────
+    @api
+    async submit() { await this.handleSubmit(); }
+
+    @api
+    async saveDraft() { await this.handleSaveDraft(); }
+
+    @api
+    cancel() { this.handleCancel(); }
+
+    // ─── Handlers ─────────────────────────────────────────────────────────────
     async handleSubmit() {
         if (!this._validateRequired()) return;
         if (this.config.requireConfirmation) {

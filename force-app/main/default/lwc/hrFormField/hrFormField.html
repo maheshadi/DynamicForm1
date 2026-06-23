@@ -3,7 +3,7 @@
         <!-- Label + help text -->
         <div class="slds-form-element__label slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
             <label class={labelClass}>{field.label}</label>
-            <template if:true={field.required}>
+            <template if:true={showRequired}>
                 <abbr class="slds-required slds-m-left_xx-small" title="required">*</abbr>
             </template>
             <template if:true={field.helpText}>

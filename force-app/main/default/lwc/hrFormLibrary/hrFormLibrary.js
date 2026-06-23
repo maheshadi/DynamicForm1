@@ -153,7 +153,10 @@ export default class HrFormLibrary extends NavigationMixin(LightningElement) {
             this._toast('No API name configured for preview.', 'warning');
         }
     }
-    handleClosePreview() { this.showPreview = false; this.previewFormApiName = ''; }
+    handleClosePreview()      { this.showPreview = false; this.previewFormApiName = ''; }
+    handlePreviewSubmit()     { this.template.querySelector('c-hr-form-renderer')?.submit(); }
+    handlePreviewSaveDraft()  { this.template.querySelector('c-hr-form-renderer')?.saveDraft(); }
+    handlePreviewCancel()     { this.template.querySelector('c-hr-form-renderer')?.cancel(); }
 
     async handleClone(evt) {
         const id   = evt.currentTarget.dataset.id;

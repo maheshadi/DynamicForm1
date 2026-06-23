@@ -1,74 +1,55 @@
 /**
  * HR_LogicEngineService
- * Compiles HR_Logic_Rule__c records into a JSON logic bundle for the client.
- * Also provides server-side rule evaluation at submit time.
+ * Compiles and evaluates form logic rules stored as JSON in HR_Form__c.
+ * Rules are read directly from the published schema JSON — no separate object needed.
  */
 public with sharing class HR_LogicEngineService {
 
-    public static List<HR_Logic_Rule__c> getRules(String formId) {
-        return [
-            SELECT Id, Name, HR_Order__c, HR_Is_Active__c,
-                   HR_Trigger_Field__r.HR_API_Name__c,
-                   HR_Operator__c, HR_Trigger_Value__c,
-                   HR_Action__c, HR_Target_Type__c,
-                   HR_Target_Field__r.HR_API_Name__c,
-                   HR_Target_Section__r.Name,
-                   HR_Action_Value__c, HR_Logic_Group__c
-            FROM HR_Logic_Rule__c
-            WHERE HR_Form__c    = :formId
-              AND HR_Is_Active__c = true
-            WITH SECURITY_ENFORCED
-            ORDER BY HR_Order__c ASC
-        ];
-    }
+    // ─── Extract rules list from a deserialized schema map ────────────────────
 
-    /**
-     * Compiles active rules into JSON consumed by hrLogicEngine.js.
-     * Structure: [ { triggerFieldApiName, operator, triggerValue, action,
-     *                targetType, targetApiName, actionValue, logicGroup } ]
-     */
-    public static String compileRules(List<HR_Logic_Rule__c> rules) {
-        List<Map<String, Object>> bundle = new List<Map<String, Object>>();
-        for (HR_Logic_Rule__c r : rules) {
-            bundle.add(new Map<String, Object>{
-                'triggerFieldApiName' => r.HR_Trigger_Field__r.HR_API_Name__c,
-                'operator'            => r.HR_Operator__c,
-                'triggerValue'        => r.HR_Trigger_Value__c,
-                'action'              => r.HR_Action__c,
-                'targetType'          => r.HR_Target_Type__c,
-                'targetApiName'       => r.HR_Target_Type__c == 'Field'
-                                         ? r.HR_Target_Field__r.HR_API_Name__c
-                                         : r.HR_Target_Section__r.Name,
-                'actionValue'         => r.HR_Action_Value__c,
-                'logicGroup'          => r.HR_Logic_Group__c
-            });
+    public static List<Map<String, Object>> getRulesFromSchema(Map<String, Object> schema) {
+        List<Map<String, Object>> result = new List<Map<String, Object>>();
+        if (schema == null || !schema.containsKey('rules')) return result;
+        for (Object rObj : (List<Object>) schema.get('rules')) {
+            result.add((Map<String, Object>) rObj);
         }
-        return JSON.serialize(bundle);
+        return result;
     }
 
-    /**
-     * Server-side submission validation.
-     * Evaluates Required rules against submitted payload.
-     */
+    // ─── Compile rules into JSON string for the client logic engine ───────────
+
+    public static String compileRules(List<Map<String, Object>> rules) {
+        return JSON.serialize(rules);
+    }
+
+    // ─── Server-side submission validation ────────────────────────────────────
+
     public static List<HR_SchemaValidator.ValidationError> validateSubmission(
             String formApiName, Map<String, Object> payload) {
 
         HR_Form__c form = [
-            SELECT Id FROM HR_Form__c
+            SELECT HR_Published_Schema_JSON__c
+            FROM HR_Form__c
             WHERE HR_API_Name__c = :formApiName AND HR_Status__c = 'Published'
             WITH SECURITY_ENFORCED LIMIT 1
         ];
 
-        List<HR_Logic_Rule__c> rules = getRules(form.Id);
+        Map<String, Object> schema = String.isBlank(form.HR_Published_Schema_JSON__c)
+            ? new Map<String, Object>()
+            : (Map<String, Object>) JSON.deserializeUntyped(form.HR_Published_Schema_JSON__c);
+
+        List<Map<String, Object>> rules = getRulesFromSchema(schema);
         List<HR_SchemaValidator.ValidationError> errors =
             new List<HR_SchemaValidator.ValidationError>();
 
-        for (HR_Logic_Rule__c r : rules) {
-            if (r.HR_Action__c != 'Make_Required') continue;
-            String triggerApiName = r.HR_Trigger_Field__r.HR_API_Name__c;
-            Object triggerValue = payload.get(triggerApiName);
-            if (matchesCondition(r.HR_Operator__c, String.valueOf(triggerValue), r.HR_Trigger_Value__c)) {
-                String targetApi = r.HR_Target_Field__r.HR_API_Name__c;
+        for (Map<String, Object> r : rules) {
+            if (r.get('action') != 'Make_Required') continue;
+            String triggerApi = (String) r.get('triggerFieldApiName');
+            String operator   = (String) r.get('operator');
+            String expected   = (String) r.get('triggerValue');
+            Object trigVal    = payload.get(triggerApi);
+            if (matchesCondition(operator, String.valueOf(trigVal), expected)) {
+                String targetApi  = (String) r.get('targetApiName');
                 Object fieldValue = payload.get(targetApi);
                 if (fieldValue == null || String.isBlank(String.valueOf(fieldValue))) {
                     errors.add(new HR_SchemaValidator.ValidationError(
@@ -78,6 +59,8 @@ public with sharing class HR_LogicEngineService {
         }
         return errors;
     }
+
+    // ─── Condition evaluator ───────────────────────────────────────────────────
 
     public static Boolean matchesCondition(String operator, String actual, String expected) {
         if (operator == 'equals')        return actual == expected;
@@ -96,18 +79,21 @@ public with sharing class HR_LogicEngineService {
         return false;
     }
 
-    public static void evaluateRules(List<HR_Logic_Rule__c> rules,
-            Map<String, Object> fieldValues, List<Map<String,Object>> actions) {
-        for (HR_Logic_Rule__c r : rules) {
-            Object trigVal = fieldValues.get(r.HR_Trigger_Field__r.HR_API_Name__c);
-            if (matchesCondition(r.HR_Operator__c, String.valueOf(trigVal), r.HR_Trigger_Value__c)) {
+    // ─── Server-side rule evaluation ──────────────────────────────────────────
+
+    public static void evaluateRules(List<Map<String, Object>> rules,
+            Map<String, Object> fieldValues, List<Map<String, Object>> actions) {
+        for (Map<String, Object> r : rules) {
+            String triggerApi = (String) r.get('triggerFieldApiName');
+            String operator   = (String) r.get('operator');
+            String expected   = (String) r.get('triggerValue');
+            Object trigVal    = fieldValues.get(triggerApi);
+            if (matchesCondition(operator, String.valueOf(trigVal), expected)) {
                 actions.add(new Map<String, Object>{
-                    'action'        => r.HR_Action__c,
-                    'targetType'    => r.HR_Target_Type__c,
-                    'targetApiName' => r.HR_Target_Type__c == 'Field'
-                                       ? r.HR_Target_Field__r.HR_API_Name__c
-                                       : r.HR_Target_Section__r.Name,
-                    'actionValue'   => r.HR_Action_Value__c
+                    'action'        => r.get('action'),
+                    'targetType'    => r.get('targetType'),
+                    'targetApiName' => r.get('targetApiName'),
+                    'actionValue'   => r.get('actionValue')
                 });
             }
         }

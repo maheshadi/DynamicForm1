@@ -2,6 +2,7 @@
  * HR_FormRendererController
  * @AuraEnabled controller for hrFormRenderer LWC.
  * Serves published schema + logic bundle to the client.
+ * Rules are embedded in the published schema JSON — no separate object query needed.
  */
 public with sharing class HR_FormRendererController {
 
@@ -32,16 +33,25 @@ public with sharing class HR_FormRendererController {
         }
         HR_Form__c form = forms[0];
 
-        // 3. Compile logic rules into client-side bundle
-        List<HR_Logic_Rule__c> rules = HR_LogicEngineService.getRules(form.Id);
-        String logicBundle = HR_LogicEngineService.compileRules(rules);
+        // 3. Parse the published schema once — rules are embedded under the 'rules' key
+        Map<String, Object> schema;
+        if (String.isBlank(form.HR_Published_Schema_JSON__c)) {
+            schema = new Map<String, Object>{
+                'sections' => new List<Object>(),
+                'rules'    => new List<Object>()
+            };
+        } else {
+            schema = (Map<String, Object>) JSON.deserializeUntyped(form.HR_Published_Schema_JSON__c);
+        }
 
-        // 4. Return schema + logic bundle + config
+        // 4. Extract logic bundle from the schema (client uses this separately)
+        List<Object> logicBundle = schema.containsKey('rules')
+            ? (List<Object>) schema.get('rules')
+            : new List<Object>();
+
         return new Map<String, Object>{
-            'schema'      => String.isBlank(form.HR_Published_Schema_JSON__c)
-                              ? new Map<String, Object>{ 'sections' => new List<Object>() }
-                              : JSON.deserializeUntyped(form.HR_Published_Schema_JSON__c),
-            'logicBundle' => String.isBlank(logicBundle) ? new List<Object>() : JSON.deserializeUntyped(logicBundle),
+            'schema'      => schema,
+            'logicBundle' => logicBundle,
             'config'      => getFormConfig(form)
         };
     }

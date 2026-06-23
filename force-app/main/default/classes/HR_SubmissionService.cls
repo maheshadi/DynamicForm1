@@ -1,6 +1,7 @@
 /**
  * HR_SubmissionService
  * Validates, persists, and maps form submissions to target SObject.
+ * Field-to-SF-object mappings are read from the published schema JSON (sfFieldApi property).
  */
 public with sharing class HR_SubmissionService {
 
@@ -15,32 +16,29 @@ public with sharing class HR_SubmissionService {
             throw new AuraHandledException(JSON.serialize(errors));
         }
 
-        // 2. Query form config
+        // 2. Query form config — include published schema for field mapping
         HR_Form__c form = [
             SELECT Id, HR_Target_Object_API__c, HR_Record_Type_Dev_Name__c,
-                   HR_Version__c
+                   HR_Version__c, HR_Published_Schema_JSON__c
             FROM HR_Form__c
             WHERE HR_API_Name__c = :formApiName
               AND HR_Status__c   = 'Published'
             WITH SECURITY_ENFORCED LIMIT 1
         ];
 
-        // 3. Map payload to target SObject and insert
+        // 3. Map payload to target SObject using sfFieldApi from schema JSON and insert
         SObject targetRecord = mapToSObject(form, payload);
         SObjectAccessDecision dec = Security.stripInaccessible(AccessType.CREATABLE,
             new List<SObject>{ targetRecord });
         insert dec.getRecords()[0];
         String targetRecordId = (String) dec.getRecords()[0].get('Id');
 
-        // 4. Persist submission header
+        // 4. Persist submission header (full payload stored as JSON — single source of truth)
         HR_Form_Submission__c sub = createSubmissionRecord(
             form, payloadJSON, targetRecordId, durationSec);
         insert sub;
 
-        // 5. Insert normalised field values
-        insertFieldValues(sub.Id, formApiName, payload);
-
-        // 6. Audit log async
+        // 5. Audit log async
         HR_AuditService.logAsync('Submission_Created', sub.Id, null);
 
         return sub.Id;
@@ -65,7 +63,7 @@ public with sharing class HR_SubmissionService {
         }
 
         HR_Form__c form = [
-            SELECT Id, HR_Version__c FROM HR_Form__c
+            SELECT Id, HR_Version__c, HR_Target_Object_API__c FROM HR_Form__c
             WHERE HR_API_Name__c = :formApiName AND HR_Status__c = 'Published'
             WITH SECURITY_ENFORCED LIMIT 1
         ];
@@ -77,12 +75,12 @@ public with sharing class HR_SubmissionService {
         ];
 
         HR_Form_Submission__c sub = new HR_Form_Submission__c(
-            HR_Form__c         = form.Id,
-            HR_Form_Version__c = ver.Id,
-            HR_Submitted_By__c = UserInfo.getUserId(),
-            HR_Status__c       = 'Draft',
-            HR_Payload_JSON__c = payloadJSON,
-            HR_Target_Object_API__c = [SELECT HR_Target_Object_API__c FROM HR_Form__c WHERE Id = :form.Id LIMIT 1].HR_Target_Object_API__c
+            HR_Form__c              = form.Id,
+            HR_Form_Version__c      = ver.Id,
+            HR_Submitted_By__c      = UserInfo.getUserId(),
+            HR_Status__c            = 'Draft',
+            HR_Payload_JSON__c      = payloadJSON,
+            HR_Target_Object_API__c = form.HR_Target_Object_API__c
         );
         insert sub;
         return sub.Id;
@@ -130,20 +128,27 @@ public with sharing class HR_SubmissionService {
             record.put('RecordTypeId', rtId);
         }
 
-        // Map fields that have HR_SF_Field_API__c set
-        List<HR_Form_Field__c> fields = [
-            SELECT HR_API_Name__c, HR_SF_Field_API__c, HR_Field_Type__c
-            FROM HR_Form_Field__c
-            WHERE HR_Form__c = :form.Id
-              AND HR_SF_Field_API__c != null
-              AND HR_Is_Active__c    = true
-            WITH SECURITY_ENFORCED
-        ];
+        // Read field-to-SF-object mappings from published schema JSON (sfFieldApi property)
+        if (String.isBlank(form.HR_Published_Schema_JSON__c)) return record;
 
-        for (HR_Form_Field__c f : fields) {
-            Object val = payload.get(f.HR_API_Name__c);
-            if (val != null) {
-                record.put(f.HR_SF_Field_API__c, val);
+        Map<String, Object> schema =
+            (Map<String, Object>) JSON.deserializeUntyped(form.HR_Published_Schema_JSON__c);
+        List<Object> sections = schema.containsKey('sections')
+            ? (List<Object>) schema.get('sections') : new List<Object>();
+
+        for (Object secObj : sections) {
+            Map<String, Object> sec = (Map<String, Object>) secObj;
+            List<Object> fields = sec.containsKey('fields')
+                ? (List<Object>) sec.get('fields') : new List<Object>();
+            for (Object fldObj : fields) {
+                Map<String, Object> fld = (Map<String, Object>) fldObj;
+                String sfFieldApi = (String) fld.get('sfFieldApi');
+                if (String.isBlank(sfFieldApi)) continue;
+                String apiName = (String) fld.get('apiName');
+                Object val = payload.get(apiName);
+                if (val != null) {
+                    record.put(sfFieldApi, val);
+                }
             }
         }
         return record;
@@ -170,51 +175,5 @@ public with sharing class HR_SubmissionService {
             HR_Payload_JSON__c      = payloadJSON,
             HR_Duration_Seconds__c  = durationSec
         );
-    }
-
-    private static void insertFieldValues(
-            String submissionId, String formApiName, Map<String, Object> payload) {
-
-        Map<String, HR_Form_Field__c> fieldMap = new Map<String, HR_Form_Field__c>();
-        for (HR_Form_Field__c f : [
-            SELECT Id, HR_API_Name__c, HR_Field_Type__c
-            FROM HR_Form_Field__c
-            WHERE HR_Form__r.HR_API_Name__c = :formApiName
-              AND HR_Is_Active__c = true
-            WITH SECURITY_ENFORCED
-        ]) {
-            fieldMap.put(f.HR_API_Name__c, f);
-        }
-
-        List<HR_Field_Value__c> values = new List<HR_Field_Value__c>();
-        for (String key : payload.keySet()) {
-            if (!fieldMap.containsKey(key)) continue;
-            HR_Form_Field__c fld = fieldMap.get(key);
-            HR_Field_Value__c fv = new HR_Field_Value__c(
-                HR_Submission__c    = submissionId,
-                HR_Field__c         = fld.Id,
-                HR_Field_API_Name__c = key
-            );
-            Object rawVal = payload.get(key);
-            String ft = fld.HR_Field_Type__c;
-            if (ft == 'Date') {
-                fv.HR_Value_Date__c = Date.valueOf(String.valueOf(rawVal));
-            } else if (ft == 'DateTime') {
-                fv.HR_Value_DateTime__c = Datetime.valueOf(String.valueOf(rawVal));
-            } else if (ft == 'Number' || ft == 'Currency') {
-                fv.HR_Value_Number__c = Decimal.valueOf(String.valueOf(rawVal));
-            } else if (ft == 'Checkbox') {
-                fv.HR_Value_Boolean__c = Boolean.valueOf(rawVal);
-            } else if (ft == 'Lookup') {
-                fv.HR_Referenced_Record_Id__c   = String.valueOf(((Map<String,Object>)rawVal).get('id'));
-                fv.HR_Referenced_Record_Name__c = String.valueOf(((Map<String,Object>)rawVal).get('name'));
-            } else {
-                fv.HR_Value_Text__c = String.valueOf(rawVal);
-            }
-            values.add(fv);
-        }
-
-        SObjectAccessDecision dec = Security.stripInaccessible(AccessType.CREATABLE, values);
-        insert dec.getRecords();
     }
 }

@@ -5,12 +5,21 @@
 private class HR_SubmissionServiceTest {
 
     private static HR_Form__c createPublishedForm() {
+        // sfFieldApi included so mapToSObject can map payload → Case.Subject
         String schema = JSON.serialize(new Map<String, Object>{
             'sections' => new List<Object>{
                 new Map<String, Object>{
+                    'id'     => 's_1',
+                    'title'  => 'Section 1',
+                    'columns'=> 2,
                     'fields' => new List<Object>{
                         new Map<String, Object>{
-                            'apiName' => 'subject', 'type' => 'Text', 'label' => 'Subject'
+                            'id'         => 'f_1',
+                            'apiName'    => 'subject',
+                            'type'       => 'Text',
+                            'label'      => 'Subject',
+                            'sfFieldApi' => 'Subject',
+                            'required'   => false
                         }
                     }
                 }
@@ -19,17 +28,17 @@ private class HR_SubmissionServiceTest {
         });
 
         HR_Form__c form = new HR_Form__c(
-            Name                       = 'Submit Test Form',
-            HR_API_Name__c             = 'submit_test_form',
-            HR_Category__c             = 'General',
-            HR_Status__c               = 'Published',
-            HR_Version__c              = 1,
-            HR_Target_Object_API__c    = 'Case',
-            HR_Deployment_Target__c    = 'LWC_Component',
-            HR_On_Submit_Action__c     = 'Show_Message',
-            HR_Allow_Draft_Save__c     = true,
-            HR_Require_Confirmation__c = false,
-            HR_Schema_JSON__c          = schema,
+            Name                        = 'Submit Test Form',
+            HR_API_Name__c              = 'submit_test_form',
+            HR_Category__c              = 'General',
+            HR_Status__c                = 'Published',
+            HR_Version__c               = 1,
+            HR_Target_Object_API__c     = 'Case',
+            HR_Deployment_Target__c     = 'LWC_Component',
+            HR_On_Submit_Action__c      = 'Show_Message',
+            HR_Allow_Draft_Save__c      = true,
+            HR_Require_Confirmation__c  = false,
+            HR_Schema_JSON__c           = schema,
             HR_Published_Schema_JSON__c = schema
         );
         insert form;
@@ -44,29 +53,6 @@ private class HR_SubmissionServiceTest {
             HR_Is_Active_Version__c = true
         );
         insert ver;
-
-        HR_Form_Section__c sec = new HR_Form_Section__c(
-            Name        = 'Section 1',
-            HR_Form__c  = form.Id,
-            HR_Order__c = 1,
-            HR_Columns__c = '2'
-        );
-        insert sec;
-
-        HR_Form_Field__c fld = new HR_Form_Field__c(
-            Name              = 'Subject',
-            HR_Section__c     = sec.Id,
-            HR_Form__c        = form.Id,
-            HR_API_Name__c    = 'subject',
-            HR_Field_Type__c  = 'Text',
-            HR_Order__c       = 1,
-            HR_Column_Span__c = 'Half',
-            HR_Required__c    = false,
-            HR_Read_Only__c   = false,
-            HR_Is_Active__c   = true,
-            HR_SF_Field_API__c = 'Subject'
-        );
-        insert fld;
 
         return form;
     }

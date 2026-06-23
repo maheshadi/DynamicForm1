@@ -131,21 +131,6 @@ public with sharing class HR_FormSchemaService {
         return cloneId;
     }
 
-    // ─── Field ordering ────────────────────────────────────────────────────────
-
-    @AuraEnabled
-    public static void reorderFields(List<Map<String, Object>> fieldOrders) {
-        List<HR_Form_Field__c> toUpdate = new List<HR_Form_Field__c>();
-        for (Map<String, Object> fo : fieldOrders) {
-            toUpdate.add(new HR_Form_Field__c(
-                Id         = (String)  fo.get('id'),
-                HR_Order__c = (Decimal) fo.get('order')
-            ));
-        }
-        SObjectAccessDecision dec = Security.stripInaccessible(AccessType.UPDATABLE, toUpdate);
-        update dec.getRecords();
-    }
-
     // ─── Exceptions ────────────────────────────────────────────────────────────
 
     public class HR_FormNotFoundException extends Exception {}

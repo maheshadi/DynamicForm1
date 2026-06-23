@@ -1,6 +1,7 @@
 import { LightningElement, api, track } from 'lwc';
 
-const ACTION_COLORS = { Show:'#2e844a', Hide:'#ba0517', 'Make Required':'#e07400', 'Auto-Populate':'#0070d2' };
+const ACTION_COLORS  = { Show:'#2e844a', Hide:'#ba0517', 'Make Required':'#e07400', 'Auto-Populate':'#0070d2' };
+const NUMBER_FIELDS  = new Set(['minLength', 'maxLength', 'minValue', 'maxValue', 'columns']);
 
 export default class HrBuilderProperties extends LightningElement {
     @api selectedField   = null;
@@ -92,14 +93,35 @@ export default class HrBuilderProperties extends LightningElement {
     _dispatch(targetId, targetType, changes) {
         this.dispatchEvent(new CustomEvent('propertychanged', { detail: { targetId, targetType, changes } }));
     }
-    handleFormChange(evt)    { this._dispatch(null, 'form', { [evt.target.dataset.field]: evt.target.value }); }
+
+    // lightning-combobox puts the selected value in evt.detail.value;
+    // evt.target.value is stale (holds the pre-change value) for custom LWC components.
+    // lightning-input text/number/color puts the value in evt.target.value.
+    // Use detail.value when present, fall back to target.value for native inputs.
+    _readValue(evt) {
+        return (evt.detail && evt.detail.value !== undefined) ? evt.detail.value : evt.target.value;
+    }
+
+    _coerce(field, value) {
+        return NUMBER_FIELDS.has(field) ? (value === '' ? null : Number(value)) : value;
+    }
+
+    handleFormChange(evt) {
+        const f = evt.target.dataset.field;
+        this._dispatch(null, 'form', { [f]: this._coerce(f, this._readValue(evt)) });
+    }
     handleFormToggle(evt)    { this._dispatch(null, 'form', { [evt.target.dataset.field]: evt.target.checked }); }
     handleSectionChange(evt) {
-        const val = evt.target.dataset.field === 'columns' ? Number(evt.target.value) : evt.target.value;
-        this._dispatch(this.selectedSection.id, 'section', { [evt.target.dataset.field]: val });
+        const f   = evt.target.dataset.field;
+        const val = this._coerce(f, this._readValue(evt));
+        this._dispatch(this.selectedSection.id, 'section', { [f]: val });
     }
     handleSectionToggle(evt) { this._dispatch(this.selectedSection.id, 'section', { [evt.target.dataset.field]: evt.target.checked }); }
-    handleFieldChange(evt)   { this._dispatch(this.selectedField.id, 'field', { [evt.target.dataset.field]: evt.target.value }); }
+    handleFieldChange(evt) {
+        const f   = evt.target.dataset.field;
+        const val = this._coerce(f, this._readValue(evt));
+        this._dispatch(this.selectedField.id, 'field', { [f]: val });
+    }
     handleFieldToggle(evt)   { this._dispatch(this.selectedField.id, 'field', { [evt.target.dataset.field]: evt.target.checked }); }
     handleRulesClick()       { this.dispatchEvent(new CustomEvent('rulesclick')); }
 }

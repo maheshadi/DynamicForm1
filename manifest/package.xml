@@ -109,8 +109,6 @@
         <members>HR_Field_Type_Config.Text_Input</members>
         <members>HR_Field_Type_Config.URL</members>
         <members>HR_Field_Type_Config.date</members>
-        <members>HR_Field_Type_Config.dropdown</members>
-        <members>HR_Field_Type_Config.email</members>
         <members>HR_Field_Type_Config.radio</members>
         <members>HR_Field_Type_Config.text</members>
         <members>HR_Field_Type_Config.textarea</members>

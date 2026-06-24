@@ -71,6 +71,54 @@
         </div>
     </div>
 
+    <!-- Preview Modal -->
+    <template if:true={showPreview}>
+        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open">
+            <div class="slds-modal__container" style="max-width:760px">
+                <header class="slds-modal__header">
+                    <button class="slds-button slds-button_icon slds-modal__close" title="Close" onclick={handleClosePreview}>
+                        <lightning-icon icon-name="utility:close" size="small" alternative-text="Close"></lightning-icon>
+                        <span class="slds-assistive-text">Close</span>
+                    </button>
+                    <h2 class="slds-modal__title">Preview — {formSchema.name}</h2>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <!-- Published: load via Apex so preview matches Form Library exactly -->
+                    <template if:true={isFormPublished}>
+                        <c-hr-form-renderer
+                            form-api-name={formSchema.apiName}
+                            hide-footer>
+                        </c-hr-form-renderer>
+                    </template>
+                    <!-- Draft: render in-memory schema with a notice -->
+                    <template if:false={isFormPublished}>
+                        <div class="slds-notify slds-notify_alert slds-theme_warning slds-m-bottom_small" role="alert">
+                            <lightning-icon icon-name="utility:warning" size="x-small"
+                                class="slds-m-right_x-small" variant="inverse"></lightning-icon>
+                            This form is not published. Previewing the current draft — publish to make it available.
+                        </div>
+                        <c-hr-form-renderer
+                            override-schema={formSchema}
+                            hide-footer>
+                        </c-hr-form-renderer>
+                    </template>
+                </div>
+                <footer class="slds-modal__footer slds-grid slds-grid_align-spread">
+                    <button class="slds-button slds-button_neutral" onclick={handlePreviewReset}>
+                        <lightning-icon icon-name="utility:refresh" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                        Reset
+                    </button>
+                    <div class="slds-button-group">
+                        <button class="slds-button slds-button_outline-brand" onclick={handlePreviewSaveDraft}>Save Draft</button>
+                        <button class="slds-button slds-button_brand" onclick={handlePreviewSubmit}>Submit</button>
+                        <button class="slds-button slds-button_neutral" onclick={handleClosePreview}>Close</button>
+                    </div>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+
     <!-- Rules Modal -->
     <template if:true={showRulesEditor}>
         <div class="slds-backdrop slds-backdrop_open"></div>

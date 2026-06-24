@@ -1,9 +1,11 @@
 <template>
     <div class="hr-form-footer slds-card slds-card__footer slds-grid slds-grid_align-spread slds-p-around_medium slds-m-top_medium">
 
-        <!-- Left: Cancel -->
-        <button class="slds-button slds-button_neutral" onclick={handleCancel}>
-            Cancel
+        <!-- Left: Reset -->
+        <button class="slds-button slds-button_neutral" onclick={handleReset}>
+            <lightning-icon icon-name="utility:refresh" size="x-small"
+                class="slds-m-right_x-small"></lightning-icon>
+            Reset
         </button>
 
         <!-- Right: Save Draft + Submit -->

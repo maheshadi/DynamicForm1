@@ -51,7 +51,9 @@ export default class HrBuilderRuleEditor extends LightningElement {
 
     handleRuleChange(evt) {
         const { id, field } = evt.currentTarget.dataset;
-        this._rules = this._rules.map(r => r.id === id ? { ...r, [field]: evt.target.value } : r);
+        // lightning-combobox fires detail.value; lightning-input fires target.value
+        const value = (evt.detail && evt.detail.value !== undefined) ? evt.detail.value : evt.target.value;
+        this._rules = this._rules.map(r => r.id === id ? { ...r, [field]: value } : r);
         this._emit();
     }
 

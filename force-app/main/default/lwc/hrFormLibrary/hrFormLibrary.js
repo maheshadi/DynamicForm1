@@ -129,10 +129,8 @@ export default class HrFormLibrary extends NavigationMixin(LightningElement) {
         const id   = evt.currentTarget.dataset.id;
         const form = this.allForms.find(f => f.id === id);
         if (form && form.apiName) {
-            // Store selected form for the builder to pick up
+            // sessionStorage is the signal; wiredPageRef in builder reads it on tab activation
             sessionStorage.setItem('hrfc_editFormApiName', form.apiName);
-            sessionStorage.setItem('hrfc_editFormId', form.id);
-            // Navigate to Form Builder tab
             this[NavigationMixin.Navigate]({
                 type: 'standard__navItemPage',
                 attributes: { apiName: 'HR_Form_Builder' }
@@ -156,7 +154,7 @@ export default class HrFormLibrary extends NavigationMixin(LightningElement) {
     handleClosePreview()      { this.showPreview = false; this.previewFormApiName = ''; }
     handlePreviewSubmit()     { this.template.querySelector('c-hr-form-renderer')?.submit(); }
     handlePreviewSaveDraft()  { this.template.querySelector('c-hr-form-renderer')?.saveDraft(); }
-    handlePreviewCancel()     { this.template.querySelector('c-hr-form-renderer')?.cancel(); }
+    handlePreviewReset()      { this.template.querySelector('c-hr-form-renderer')?.reset(); }
 
     async handleClone(evt) {
         const id   = evt.currentTarget.dataset.id;
@@ -175,7 +173,6 @@ export default class HrFormLibrary extends NavigationMixin(LightningElement) {
     }
 
     handleNewForm() {
-        sessionStorage.removeItem('hrfc_editFormApiName');
         this[NavigationMixin.Navigate]({
             type: 'standard__navItemPage',
             attributes: { apiName: 'HR_Form_Builder' }

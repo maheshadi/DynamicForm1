@@ -106,6 +106,21 @@ export default class HrBuilderProperties extends LightningElement {
         return NUMBER_FIELDS.has(field) ? (value === '' ? null : Number(value)) : value;
     }
 
+    // Convert any user-typed string to a valid ^[a-z][a-z0-9_]*$ API name.
+    // Handles camelCase, PascalCase, spaces, and leading digits gracefully.
+    _sanitizeApiName(raw) {
+        let s = (raw || '')
+            .trim()
+            .replace(/([a-z])([A-Z])/g, '$1_$2')        // camelCase → snake_case
+            .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')  // ABCDef → ABC_Def
+            .toLowerCase()
+            .replace(/[^a-z0-9_]/g, '_')                 // non-alphanumeric → _
+            .replace(/^[^a-z]+/, '')                     // strip leading non-letter chars
+            .replace(/_+/g, '_')                         // collapse consecutive underscores
+            .replace(/_+$/, '');                         // strip trailing underscore
+        return s;
+    }
+
     handleFormChange(evt) {
         const f = evt.target.dataset.field;
         this._dispatch(null, 'form', { [f]: this._coerce(f, this._readValue(evt)) });
@@ -119,7 +134,11 @@ export default class HrBuilderProperties extends LightningElement {
     handleSectionToggle(evt) { this._dispatch(this.selectedSection.id, 'section', { [evt.target.dataset.field]: evt.target.checked }); }
     handleFieldChange(evt) {
         const f   = evt.target.dataset.field;
-        const val = this._coerce(f, this._readValue(evt));
+        let   val = this._coerce(f, this._readValue(evt));
+        if (f === 'apiName') {
+            val = this._sanitizeApiName(val);
+            if (!val) return;  // never dispatch an empty API name
+        }
         this._dispatch(this.selectedField.id, 'field', { [f]: val });
     }
     handleFieldToggle(evt)   { this._dispatch(this.selectedField.id, 'field', { [evt.target.dataset.field]: evt.target.checked }); }

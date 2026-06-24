@@ -23,6 +23,7 @@ export default class HrFormBuilder extends LightningElement {
     @track selectedFieldId    = null;
     @track selectedSectionId  = null;
     @track showRulesEditor    = false;
+    @track showPreview        = false;
     @track isSaving           = false;
     @track isPublishing       = false;
     @track toastMessage       = null;
@@ -31,23 +32,27 @@ export default class HrFormBuilder extends LightningElement {
     _autoSaveTimer = null;
     _autoSaveIntervalSec = AUTO_SAVE_DEFAULT_SEC;
 
-    // ─── Page reference (reads formApiName from URL state) ───────────────────
+    // ─── Page reference ────────────────────────────────────────────────────────
+    // wiredPageRef fires both on initial mount AND whenever this tab is activated.
+    // That makes it the right place to detect a pending edit from the library,
+    // whether the builder component is freshly created or was already alive in the background.
     @wire(CurrentPageReference)
-    wiredPageRef(pageRef) {
-        if (pageRef && pageRef.state && pageRef.state.formApiName) {
-            this._loadForm(pageRef.state.formApiName);
-        }
+    wiredPageRef() {
+        this._loadPendingForm();
     }
 
     connectedCallback() {
-        // Pick up form selected from the Form Library
-        const pendingApiName = sessionStorage.getItem('hrfc_editFormApiName');
-        if (pendingApiName) {
-            sessionStorage.removeItem('hrfc_editFormApiName');
-            sessionStorage.removeItem('hrfc_editFormId');
-            this._loadForm(pendingApiName);
-        }
+        // Also check on mount in case wiredPageRef already fired before sessionStorage was written
+        this._loadPendingForm();
         this._startAutoSave();
+    }
+
+    _loadPendingForm() {
+        const pending = sessionStorage.getItem('hrfc_editFormApiName');
+        if (pending && pending !== this.formSchema.apiName) {
+            sessionStorage.removeItem('hrfc_editFormApiName');
+            this._loadForm(pending);
+        }
     }
 
     disconnectedCallback() {
@@ -57,6 +62,7 @@ export default class HrFormBuilder extends LightningElement {
     // ─── Computed ─────────────────────────────────────────────────────────────
     get canPublish()           { return hasAdminPermission; }
     get statusLabel()          { return this.formSchema.status || 'Draft'; }
+    get isFormPublished()      { return this.formSchema.status === 'Published'; }
     get saveDraftLabel()       { return this.isSaving ? 'Saving…' : 'Save Draft'; }
     get publishLabel()         { return this.isPublishing ? 'Publishing…' : 'Publish'; }
     get schemaCharCount()      { return JSON.stringify(this.formSchema).length; }
@@ -64,6 +70,7 @@ export default class HrFormBuilder extends LightningElement {
     get schemaUsagePercent()   { return Math.round((this.schemaCharCount / MAX_SCHEMA_CHARS) * 100); }
     get schemaUsageVariant()   { return this.schemaUsagePercent > 80 ? 'warning' : 'base'; }
     get toastIcon()            { return 'utility:' + (this.toastVariant === 'success' ? 'success' : 'error'); }
+    get saveRulesLabel()       { return this.isSaving ? 'Saving…' : 'Save Rules'; }
 
     get selectedField() {
         if (!this.selectedFieldId) return null;
@@ -79,7 +86,7 @@ export default class HrFormBuilder extends LightningElement {
         return (this.formSchema.sections || []).find(s => s.id === this.selectedSectionId);
     }
 
-    // ─── Event handlers ───────────────────────────────────────────────────────
+    // ─── Canvas event handlers ────────────────────────────────────────────────
     handleFieldAdded(evt) {
         const { fieldType, typeApiName } = evt.detail;
         const targetSectionId = this.selectedSectionId
@@ -162,7 +169,20 @@ export default class HrFormBuilder extends LightningElement {
             } else if (targetType === 'field') {
                 schema.sections.forEach(sec => {
                     const f = (sec.fields || []).find(f => f.id === targetId);
-                    if (f) Object.assign(f, changes);
+                    if (f) {
+                        const oldApiName = f.apiName;
+                        Object.assign(f, changes);
+                        // When a field's API name changes, update any rules that reference it
+                        // so they don't become orphaned and cause save validation errors.
+                        if (changes.apiName && changes.apiName !== oldApiName) {
+                            schema.rules = (schema.rules || []).map(rule => {
+                                const r = { ...rule };
+                                if (r.triggerFieldApiName === oldApiName) r.triggerFieldApiName = changes.apiName;
+                                if (r.targetApiName       === oldApiName) r.targetApiName       = changes.apiName;
+                                return r;
+                            });
+                        }
+                    }
                 });
             }
         });
@@ -174,6 +194,7 @@ export default class HrFormBuilder extends LightningElement {
         });
     }
 
+    // ─── Rules editor ─────────────────────────────────────────────────────────
     handleRulesClick()  { this.showRulesEditor = true; }
     handleCloseRules()  { this.showRulesEditor = false; }
 
@@ -190,9 +211,14 @@ export default class HrFormBuilder extends LightningElement {
         }
     }
 
-    get saveRulesLabel() { return this.isSaving ? 'Saving…' : 'Save Rules'; }
-    handlePreview()     { this._toast('Preview mode coming soon.', 'info'); }
+    // ─── Preview ──────────────────────────────────────────────────────────────
+    handlePreview()       { this.showPreview = true; }
+    handleClosePreview()  { this.showPreview = false; }
+    handlePreviewSubmit()    { this.template.querySelector('c-hr-form-renderer')?.submit(); }
+    handlePreviewSaveDraft() { this.template.querySelector('c-hr-form-renderer')?.saveDraft(); }
+    handlePreviewReset()     { this.template.querySelector('c-hr-form-renderer')?.reset(); }
 
+    // ─── Save / Publish ───────────────────────────────────────────────────────
     async handleSaveDraft() {
         this.isSaving = true;
         try {
@@ -228,17 +254,12 @@ export default class HrFormBuilder extends LightningElement {
                 const pubSchema   = rec.HR_Published_Schema_JSON__c
                     ? JSON.parse(rec.HR_Published_Schema_JSON__c) : null;
 
-                // Use published schema whenever it has more total fields than the draft.
-                // Draft can lag behind published when it was never explicitly saved after
-                // the last publish, was saved before all fields were added, or was
-                // partially overwritten by an auto-save. Published = last known-good state.
-                if (pubSchema) {
-                    const fieldCount = secs =>
-                        (secs || []).reduce((n, s) => n + (s.fields || []).length, 0);
-                    if (fieldCount(pubSchema.sections) > fieldCount(savedSchema.sections)) {
-                        savedSchema.sections = pubSchema.sections;
-                        savedSchema.rules    = pubSchema.rules || savedSchema.rules || [];
-                    }
+                // Fall back to published schema only when the draft has no sections at all.
+                // Never overwrite a draft that has content — the draft is the authoritative
+                // working copy and may contain style/validation attributes not yet published.
+                if (pubSchema && !(savedSchema.sections && savedSchema.sections.length > 0)) {
+                    savedSchema.sections = pubSchema.sections || [];
+                    savedSchema.rules    = pubSchema.rules    || [];
                 }
                 this.formSchema = {
                     ...savedSchema,
@@ -258,6 +279,9 @@ export default class HrFormBuilder extends LightningElement {
                     requireConfirmation: rec.HR_Require_Confirmation__c != null ? rec.HR_Require_Confirmation__c : savedSchema.requireConfirmation,
                     recordTypeDevName:   rec.HR_Record_Type_Dev_Name__c || savedSchema.recordTypeDevName
                 };
+                // Reset selection state when loading a new form
+                this.selectedFieldId   = null;
+                this.selectedSectionId = null;
             }
         } catch (e) {
             this._toast('Could not load form: ' + this._errorMessage(e), 'error');
@@ -265,7 +289,6 @@ export default class HrFormBuilder extends LightningElement {
     }
 
     async _saveDraft() {
-        // Pass as plain object — Apex Map<String,Object> requires object, NOT JSON.stringify wrapper
         const savedId = await saveFormApex({
             formData: {
                 id:                  this.formSchema.id,
@@ -285,7 +308,6 @@ export default class HrFormBuilder extends LightningElement {
                 recordTypeDevName:   this.formSchema.recordTypeDevName
             }
         });
-        // Store the Id returned for new records so subsequent saves update, not duplicate
         if (savedId && !this.formSchema.id) {
             this.formSchema = { ...this.formSchema, id: savedId };
         }

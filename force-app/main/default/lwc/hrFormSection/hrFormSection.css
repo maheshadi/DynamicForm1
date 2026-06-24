@@ -2,3 +2,4 @@
 .hr-section-header.hr-collapsible { cursor: pointer; }
 .hr-section-header.hr-collapsible:hover { background: #005fb2; }
 .hr-cols-1 .slds-col { width: 100% !important; }
+.hr-highlight-row { background: #fffbe6; border-left: 3px solid #e07400; border-radius: 4px; padding-left: 0.25rem !important; }

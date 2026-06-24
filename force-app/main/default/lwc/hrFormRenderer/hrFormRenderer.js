@@ -7,47 +7,68 @@ import { evaluateRules } from 'c/hrLogicEngine';
 
 export default class HrFormRenderer extends NavigationMixin(LightningElement) {
 
-    @api formApiName;      // undefined by default → wire won't fire until set
+    @api formApiName;
     @api recordId;
     @api submissionId;
-    @api hideFooter = false;  // set by modal parents that supply their own footer
+    @api hideFooter = false;
 
-    _startTime = null;  // set when schema loads so duration reflects actual fill time
+    // Pass a schema object directly to bypass the wire (used by builder preview)
+    _overrideSchema = null;
+    @api
+    get overrideSchema() { return this._overrideSchema; }
+    set overrideSchema(val) {
+        this._overrideSchema = val;
+        if (val) {
+            this._schema      = val;
+            this._logicBundle = val.rules || [];
+            this.config       = this._configFromSchema(val);
+            this.isLoading    = false;
+            this.hasError     = false;
+            this._initDefaults();
+            this._initVisibility();
+        }
+    }
 
-    @track _schema          = null;
-    @track _logicBundle     = [];
-    @track config           = {};
-    @track fieldValues      = {};
-    @track fieldVisibility  = {};
+    _startTime = null;
+
+    @track _schema                = null;
+    @track _logicBundle           = [];
+    @track config                 = {};
+    @track fieldValues            = {};
+    @track fieldVisibility        = {};
     @track fieldRequiredOverrides = {};
     @track fieldDisabledOverrides = {};
-    @track isLoading        = true;
-    @track hasError         = false;
-    @track errorMessage     = '';
-    @track isSubmitted      = false;
-    @track isSubmitting     = false;
-    @track showConfirmation = false;
-    @track hasDraft         = false;
+    @track isLoading              = true;
+    @track hasError               = false;
+    @track errorMessage           = '';
+    @track isSubmitted            = false;
+    @track isSubmitting           = false;
+    @track showConfirmation       = false;
+    @track hasDraft               = false;
 
     // ─── Wire ─────────────────────────────────────────────────────────────────
     @wire(getFormSchema, { formApiName: '$formApiName' })
     wiredSchema({ data, error }) {
+        if (this._overrideSchema) return;   // builder preview: schema provided directly
         if (data) {
             this._schema      = data.schema;
             this._logicBundle = data.logicBundle || [];
             this.config       = data.config || {};
             this._startTime   = Date.now();
+            this._initDefaults();
             this._initVisibility();
             this.isLoading = false;
         } else if (error) {
-            this.hasError    = true;
+            this.hasError     = true;
             this.errorMessage = 'Form unavailable. Please contact support.';
-            this.isLoading   = false;
+            this.isLoading    = false;
         }
     }
 
     // ─── Computed ─────────────────────────────────────────────────────────────
-    get hasFormSelected() { return !!(this.formApiName && this.formApiName.trim()); }
+    get hasFormSelected() {
+        return !!(this._overrideSchema) || !!(this.formApiName && this.formApiName.trim());
+    }
     get isReady()        { return !this.isLoading && !this.hasError && !!this._schema; }
     get successMessage() { return this.config.successMessage || 'Your form has been submitted successfully.'; }
 
@@ -78,32 +99,24 @@ export default class HrFormRenderer extends NavigationMixin(LightningElement) {
         this._runLogicEngine();
     }
 
-    // ─── Public API (for modal parents) ──────────────────────────────────────
-    @api
-    async submit() { await this.handleSubmit(); }
+    // ─── Public API ───────────────────────────────────────────────────────────
+    @api async submit()    { await this.handleSubmit(); }
+    @api async saveDraft() { await this.handleSaveDraft(); }
+    @api       reset()     { this.handleReset(); }
 
-    @api
-    async saveDraft() { await this.handleSaveDraft(); }
-
-    @api
-    cancel() { this.handleCancel(); }
-
-    // ─── Handlers ─────────────────────────────────────────────────────────────
+    // ─── Form actions ──────────────────────────────────────────────────────────
     async handleSubmit() {
         if (!this._validateRequired()) return;
-        if (this.config.requireConfirmation) {
-            this.showConfirmation = true;
-            return;
-        }
+        if (this.config.requireConfirmation) { this.showConfirmation = true; return; }
         await this._doSubmit();
     }
 
-    handleCancelConfirm() { this.showConfirmation = false; }
-    async handleConfirmSubmit() { await this._doSubmit(); }
+    handleCancelConfirm()        { this.showConfirmation = false; }
+    async handleConfirmSubmit()  { await this._doSubmit(); }
 
     async handleSaveDraft() {
         try {
-            const id = await saveDraftApex({
+            await saveDraftApex({
                 formApiName: this.formApiName,
                 payloadJSON: JSON.stringify(this.fieldValues)
             });
@@ -114,12 +127,38 @@ export default class HrFormRenderer extends NavigationMixin(LightningElement) {
         }
     }
 
-    handleCancel() {
-        this.fieldValues = {};
+    handleReset() {
+        this._initDefaults();
         this._initVisibility();
+        this.fieldRequiredOverrides = {};
+        this.fieldDisabledOverrides = {};
+        this.showConfirmation       = false;
     }
 
     // ─── Private ──────────────────────────────────────────────────────────────
+    _configFromSchema(schema) {
+        return {
+            allowDraftSave:      schema.allowDraftSave,
+            requireConfirmation: schema.requireConfirmation,
+            successMessage:      schema.successMessage,
+            redirectUrl:         schema.redirectUrl,
+            onSubmitAction:      schema.onSubmitAction
+        };
+    }
+
+    _initDefaults() {
+        if (!this._schema) return;
+        const defaults = {};
+        for (const sec of (this._schema.sections || [])) {
+            for (const f of (sec.fields || [])) {
+                if (f.defaultValue !== undefined && f.defaultValue !== null && f.defaultValue !== '') {
+                    defaults[f.apiName] = f.defaultValue;
+                }
+            }
+        }
+        this.fieldValues = defaults;
+    }
+
     _initVisibility() {
         if (!this._schema) return;
         const vis = {};
@@ -132,23 +171,21 @@ export default class HrFormRenderer extends NavigationMixin(LightningElement) {
 
     _runLogicEngine() {
         const actions = evaluateRules(this._logicBundle, this.fieldValues);
-        const vis     = { ...this.fieldVisibility };
-        const req     = { ...this.fieldRequiredOverrides };
-        const dis     = { ...this.fieldDisabledOverrides };
+        const vis = { ...this.fieldVisibility };
+        const req = { ...this.fieldRequiredOverrides };
+        const dis = { ...this.fieldDisabledOverrides };
 
         for (const a of actions) {
-            const target = a.targetApiName;
-            if (a.action === 'Show')          { vis[target] = true; }
-            else if (a.action === 'Hide')     { vis[target] = false; }
-            else if (a.action === 'Make_Required') { req[target] = true; }
-            else if (a.action === 'Make_Optional') { req[target] = false; }
-            else if (a.action === 'Enable')   { dis[target] = false; }
-            else if (a.action === 'Disable')  { dis[target] = true; }
-            else if (a.action === 'Set_Value') {
-                this.fieldValues = { ...this.fieldValues, [target]: a.actionValue };
-            }
+            const t = a.targetApiName;
+            if      (a.action === 'Show')          vis[t] = true;
+            else if (a.action === 'Hide')          vis[t] = false;
+            else if (a.action === 'Make_Required') req[t] = true;
+            else if (a.action === 'Make_Optional') req[t] = false;
+            else if (a.action === 'Enable')        dis[t] = false;
+            else if (a.action === 'Disable')       dis[t] = true;
+            else if (a.action === 'Set_Value')     this.fieldValues = { ...this.fieldValues, [t]: a.actionValue };
         }
-        this.fieldVisibility       = vis;
+        this.fieldVisibility        = vis;
         this.fieldRequiredOverrides = req;
         this.fieldDisabledOverrides = dis;
     }
@@ -180,7 +217,7 @@ export default class HrFormRenderer extends NavigationMixin(LightningElement) {
                 payloadJSON: JSON.stringify(this.fieldValues),
                 durationSec
             });
-            this.isSubmitted = true;
+            this.isSubmitted      = true;
             this.showConfirmation = false;
             if (this.config.onSubmitAction === 'Redirect_URL' && this.config.redirectUrl) {
                 this[NavigationMixin.Navigate]({ type: 'standard__webPage', attributes: { url: this.config.redirectUrl } });
@@ -193,8 +230,7 @@ export default class HrFormRenderer extends NavigationMixin(LightningElement) {
     }
 
     _showToast(msg, variant) {
-        const evt = new CustomEvent('hr_toast', { detail: { message: msg, variant }, bubbles: true, composed: true });
-        this.dispatchEvent(evt);
+        this.dispatchEvent(new CustomEvent('hr_toast', { detail: { message: msg, variant }, bubbles: true, composed: true }));
     }
 
     _errMsg(e) { return e?.body?.message || e?.message || 'An unexpected error occurred.'; }

@@ -1,0 +1,8 @@
+/* Label-left layout: label beside the input */
+.hr-label-left { display: flex; align-items: flex-start; gap: 0.75rem; }
+.hr-label-left .slds-form-element__label { flex: 0 0 140px; margin-bottom: 0; padding-top: 0.375rem; }
+.hr-label-left .hr-input-wrap { flex: 1; min-width: 0; }
+
+/* Field size constraints applied to the input wrapper */
+.hr-field-small  .hr-input-wrap { max-width: 160px; }
+.hr-field-medium .hr-input-wrap { max-width: 300px; }

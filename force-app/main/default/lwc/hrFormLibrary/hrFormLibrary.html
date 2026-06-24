@@ -189,7 +189,10 @@
                     </c-hr-form-renderer>
                 </div>
                 <footer class="slds-modal__footer slds-grid slds-grid_align-spread">
-                    <button class="slds-button slds-button_neutral" onclick={handlePreviewCancel}>Cancel</button>
+                    <button class="slds-button slds-button_neutral" onclick={handlePreviewReset}>
+                        <lightning-icon icon-name="utility:refresh" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                        Reset
+                    </button>
                     <div class="slds-button-group">
                         <button class="slds-button slds-button_outline-brand" onclick={handlePreviewSaveDraft}>Save Draft</button>
                         <button class="slds-button slds-button_brand" onclick={handlePreviewSubmit}>Submit</button>

@@ -1,57 +1,61 @@
 <template>
-    <div class="hr-form-field">
+    <div class={fieldContainerClass}>
         <!-- Label + help text -->
-        <div class="slds-form-element__label slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
-            <label class={labelClass}>{field.label}</label>
-            <template if:true={showRequired}>
-                <abbr class="slds-required slds-m-left_xx-small" title="required">*</abbr>
+        <template if:false={isLabelHidden}>
+            <div class="slds-form-element__label slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
+                <label class={labelClass} style={labelStyle}>{field.label}</label>
+                <template if:true={showRequired}>
+                    <abbr class="slds-required slds-m-left_xx-small" title="required">*</abbr>
+                </template>
+                <template if:true={field.helpText}>
+                    <div class="slds-m-left_xx-small slds-popover-trigger" title={field.helpText}>
+                        <lightning-icon icon-name="utility:info_alt" size="x-small" class="slds-text-color_weak"></lightning-icon>
+                    </div>
+                </template>
+            </div>
+        </template>
+
+        <!-- Input wrapper (constrained by fieldSize / label-left flex) -->
+        <div class="hr-input-wrap">
+            <template if:true={isText}>
+                <c-hr-field-text field={field} value={value} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-text>
             </template>
-            <template if:true={field.helpText}>
-                <div class="slds-m-left_xx-small slds-popover-trigger" title={field.helpText}>
-                    <lightning-icon icon-name="utility:info_alt" size="x-small" class="slds-text-color_weak"></lightning-icon>
-                </div>
+            <template if:true={isNumber}>
+                <c-hr-field-number field={field} value={value} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-number>
+            </template>
+            <template if:true={isDate}>
+                <c-hr-field-date field={field} value={value} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-date>
+            </template>
+            <template if:true={isTextArea}>
+                <c-hr-field-text-area field={field} value={value} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-text-area>
+            </template>
+            <template if:true={isDropdown}>
+                <c-hr-field-dropdown field={field} value={value} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-dropdown>
+            </template>
+            <template if:true={isRadio}>
+                <c-hr-field-radio field={field} value={value} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-radio>
+            </template>
+            <template if:true={isCheckbox}>
+                <c-hr-field-checkbox field={field} value={value} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-checkbox>
+            </template>
+            <template if:true={isMultiSelect}>
+                <c-hr-field-multi-select field={field} value={value} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-multi-select>
+            </template>
+            <template if:true={isLookup}>
+                <c-hr-field-lookup field={field} value={value} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-lookup>
+            </template>
+            <template if:true={isCurrentUser}>
+                <c-hr-field-current-user field={field} value={value} onvaluechanged={bubble}></c-hr-field-current-user>
+            </template>
+            <template if:true={isRecordField}>
+                <c-hr-field-record-field field={field} record-id={field.recordId} onvaluechanged={bubble}></c-hr-field-record-field>
+            </template>
+            <template if:true={isFileUpload}>
+                <c-hr-field-file-upload field={field} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-file-upload>
+            </template>
+            <template if:true={isInfoBox}>
+                <c-hr-field-info-box field={field}></c-hr-field-info-box>
             </template>
         </div>
-
-        <!-- Dispatch to sub-component by type -->
-        <template if:true={isText}>
-            <c-hr-field-text field={field} value={value} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-text>
-        </template>
-        <template if:true={isNumber}>
-            <c-hr-field-number field={field} value={value} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-number>
-        </template>
-        <template if:true={isDate}>
-            <c-hr-field-date field={field} value={value} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-date>
-        </template>
-        <template if:true={isTextArea}>
-            <c-hr-field-text-area field={field} value={value} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-text-area>
-        </template>
-        <template if:true={isDropdown}>
-            <c-hr-field-dropdown field={field} value={value} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-dropdown>
-        </template>
-        <template if:true={isRadio}>
-            <c-hr-field-radio field={field} value={value} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-radio>
-        </template>
-        <template if:true={isCheckbox}>
-            <c-hr-field-checkbox field={field} value={value} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-checkbox>
-        </template>
-        <template if:true={isMultiSelect}>
-            <c-hr-field-multi-select field={field} value={value} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-multi-select>
-        </template>
-        <template if:true={isLookup}>
-            <c-hr-field-lookup field={field} value={value} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-lookup>
-        </template>
-        <template if:true={isCurrentUser}>
-            <c-hr-field-current-user field={field} value={value} onvaluechanged={bubble}></c-hr-field-current-user>
-        </template>
-        <template if:true={isRecordField}>
-            <c-hr-field-record-field field={field} record-id={field.recordId} onvaluechanged={bubble}></c-hr-field-record-field>
-        </template>
-        <template if:true={isFileUpload}>
-            <c-hr-field-file-upload field={field} is-disabled={isDisabled} onvaluechanged={bubble}></c-hr-field-file-upload>
-        </template>
-        <template if:true={isInfoBox}>
-            <c-hr-field-info-box field={field}></c-hr-field-info-box>
-        </template>
     </div>
 </template>

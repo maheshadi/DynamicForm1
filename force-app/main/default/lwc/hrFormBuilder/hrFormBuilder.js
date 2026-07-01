@@ -33,6 +33,7 @@ export default class HrFormBuilder extends LightningElement {
 
     _autoSaveTimer = null;
     _autoSaveIntervalSec = AUTO_SAVE_DEFAULT_SEC;
+    _publishedSchema = null;
 
     // ─── Page reference ────────────────────────────────────────────────────────
     // wiredPageRef fires both on initial mount AND whenever this tab is activated.
@@ -73,6 +74,19 @@ export default class HrFormBuilder extends LightningElement {
     get schemaUsageVariant()   { return this.schemaUsagePercent > 80 ? 'warning' : 'base'; }
     get toastIcon()            { return 'utility:' + (this.toastVariant === 'success' ? 'success' : 'error'); }
     get saveRulesLabel()       { return this.isSaving ? 'Saving…' : 'Save Rules'; }
+
+    // True when the current draft (sections/rules) differs from what's actually live.
+    // Preview always renders the draft, but we still want to flag when it's ahead of
+    // the published version so it's clear why the live form looks different.
+    get hasUnpublishedChanges() {
+        if (!this.isFormPublished) return false;
+        const draftKey = JSON.stringify({ sections: this.formSchema.sections, rules: this.formSchema.rules });
+        const pubKey = JSON.stringify({
+            sections: (this._publishedSchema && this._publishedSchema.sections) || [],
+            rules:    (this._publishedSchema && this._publishedSchema.rules)    || []
+        });
+        return draftKey !== pubKey;
+    }
 
     get selectedField() {
         if (!this.selectedFieldId) return null;
@@ -239,6 +253,7 @@ export default class HrFormBuilder extends LightningElement {
             await this._saveDraft();
             await publishFormApex({ formApiName: this.formSchema.apiName });
             this.formSchema = this._immutableUpdate(this.formSchema, s => { s.status = 'Published'; });
+            this._publishedSchema = { sections: this.formSchema.sections, rules: this.formSchema.rules };
             this._toast('Form published successfully!', 'success');
         } catch (e) {
             this._toast('Publish failed: ' + this._errorMessage(e), 'error');
@@ -263,6 +278,7 @@ export default class HrFormBuilder extends LightningElement {
                     savedSchema.sections = pubSchema.sections || [];
                     savedSchema.rules    = pubSchema.rules    || [];
                 }
+                this._publishedSchema = pubSchema;
                 this.formSchema = {
                     ...savedSchema,
                     id:                  rec.Id,

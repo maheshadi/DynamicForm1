@@ -92,25 +92,26 @@
                     <h2 class="slds-modal__title">Preview — {formSchema.name}</h2>
                 </header>
                 <div class="slds-modal__content slds-p-around_medium">
-                    <!-- Published: load via Apex so preview matches Form Library exactly -->
-                    <template if:true={isFormPublished}>
-                        <c-hr-form-renderer
-                            form-api-name={formSchema.apiName}
-                            hide-footer>
-                        </c-hr-form-renderer>
-                    </template>
-                    <!-- Draft: render in-memory schema with a notice -->
+                    <!-- Preview always renders the current in-memory draft, so what you see here
+                         matches what you're actively editing — never a stale published snapshot. -->
                     <template if:false={isFormPublished}>
                         <div class="slds-notify slds-notify_alert slds-theme_warning slds-m-bottom_small" role="alert">
                             <lightning-icon icon-name="utility:warning" size="x-small"
                                 class="slds-m-right_x-small" variant="inverse"></lightning-icon>
                             This form is not published. Previewing the current draft — publish to make it available.
                         </div>
-                        <c-hr-form-renderer
-                            override-schema={formSchema}
-                            hide-footer>
-                        </c-hr-form-renderer>
                     </template>
+                    <template if:true={hasUnpublishedChanges}>
+                        <div class="slds-notify slds-notify_alert slds-theme_warning slds-m-bottom_small" role="alert">
+                            <lightning-icon icon-name="utility:warning" size="x-small"
+                                class="slds-m-right_x-small" variant="inverse"></lightning-icon>
+                            You have unpublished changes. This preview shows your current draft, which differs from the live published form — publish to update it.
+                        </div>
+                    </template>
+                    <c-hr-form-renderer
+                        override-schema={formSchema}
+                        hide-footer>
+                    </c-hr-form-renderer>
                 </div>
                 <footer class="slds-modal__footer slds-grid slds-grid_align-spread">
                     <button class="slds-button slds-button_neutral" onclick={handlePreviewReset}>

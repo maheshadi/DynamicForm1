@@ -13,6 +13,13 @@
 
         <template for:each={rules} for:item="rule">
             <div key={rule.id} class="slds-box slds-box_x-small slds-m-bottom_small">
+                <template if:true={rule._hasError}>
+                    <div class="slds-notify slds-notify_alert slds-theme_warning slds-m-bottom_x-small" role="alert">
+                        <lightning-icon icon-name="utility:warning" size="x-small"
+                            class="slds-m-right_x-small" variant="inverse"></lightning-icon>
+                        {rule._errorMessage}
+                    </div>
+                </template>
                 <div class="slds-grid slds-grid_align-spread slds-m-bottom_x-small">
                     <lightning-input label="Rule Name" value={rule.name} data-id={rule.id}
                         data-field="name" onchange={handleRuleChange} variant="label-hidden"
@@ -39,6 +46,47 @@
                             onchange={handleRuleChange}></lightning-input>
                     </div>
                 </div>
+
+                <!-- Additional AND/OR conditions -->
+                <template if:true={rule._hasAdditionalConditions}>
+                    <div class="slds-col slds-size_1-of-3 slds-m-top_x-small">
+                        <lightning-combobox label="Combine conditions using" value={rule.logicGroup}
+                            options={logicGroupOptions} data-id={rule.id} data-field="logicGroup"
+                            onchange={handleRuleChange}></lightning-combobox>
+                    </div>
+                </template>
+                <template for:each={rule.additionalConditions} for:item="cond">
+                    <div key={cond.id} class="slds-grid slds-gutters_x-small slds-wrap slds-m-top_x-small">
+                        <div class="slds-col slds-size_1-of-3">
+                            <lightning-combobox label="And/or when field" value={cond.triggerFieldApiName}
+                                options={fieldOptions} data-id={rule.id} data-cond-id={cond.id}
+                                data-field="triggerFieldApiName" onchange={handleConditionChange}></lightning-combobox>
+                        </div>
+                        <div class="slds-col slds-size_1-of-4">
+                            <lightning-combobox label="Operator" value={cond.operator}
+                                options={operatorOptions} data-id={rule.id} data-cond-id={cond.id}
+                                data-field="operator" onchange={handleConditionChange}></lightning-combobox>
+                        </div>
+                        <div class="slds-col slds-size_1-of-4">
+                            <lightning-input label="Value" value={cond.triggerValue}
+                                data-id={rule.id} data-cond-id={cond.id}
+                                data-field="triggerValue" onchange={handleConditionChange}></lightning-input>
+                        </div>
+                        <div class="slds-col slds-size_1-of-12 slds-align-bottom">
+                            <button class="slds-button slds-button_icon slds-button_icon-error"
+                                data-id={rule.id} data-cond-id={cond.id} onclick={handleRemoveCondition}
+                                title="Remove condition">
+                                <lightning-icon icon-name="utility:delete" size="x-small"></lightning-icon>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+                <button class="slds-button slds-button_neutral slds-m-top_x-small"
+                    data-id={rule.id} onclick={handleAddCondition}>
+                    <lightning-icon icon-name="utility:add" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                    Add Condition
+                </button>
+
                 <div class="slds-grid slds-gutters_x-small slds-wrap slds-m-top_x-small">
                     <div class="slds-col slds-size_1-of-4">
                         <lightning-combobox label="Then" value={rule.action}
@@ -52,7 +100,7 @@
                     </div>
                     <div class="slds-col slds-size_1-of-3">
                         <lightning-combobox label="Target" value={rule.targetApiName}
-                            options={fieldOptions} data-id={rule.id} data-field="targetApiName"
+                            options={rule._targetOptions} data-id={rule.id} data-field="targetApiName"
                             onchange={handleRuleChange}></lightning-combobox>
                     </div>
                     <div class="slds-col slds-size_1-of-6">

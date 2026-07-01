@@ -5,7 +5,11 @@
  *
  * Rule bundle shape (compiled by HR_LogicEngineService.compileRules):
  * [{ id, name, triggerFieldApiName, operator, triggerValue, action, targetType,
- *    targetApiName, actionValue, isActive, logicGroup }]
+ *    targetApiName, actionValue, isActive, logicGroup,
+ *    additionalConditions: [{ triggerFieldApiName, operator, triggerValue }] }]
+ *
+ * A rule's primary trigger plus any additionalConditions are combined using
+ * logicGroup ('AND' by default, or 'OR') to decide whether the rule fires.
  */
 
 /**
@@ -17,11 +21,23 @@
  */
 export function evaluateRules(ruleBundle, fieldValues) {
     if (!Array.isArray(ruleBundle) || !fieldValues) return [];
-    return ruleBundle.filter(rule => {
-        if (!rule.isActive) return false;
-        const fieldVal = fieldValues[rule.triggerFieldApiName];
-        return matchesCondition(rule.operator, fieldVal, rule.triggerValue);
-    });
+    return ruleBundle.filter(rule => rule.isActive && ruleConditionsMet(rule, fieldValues));
+}
+
+/**
+ * Combines a rule's primary condition with any additionalConditions using AND/OR.
+ * Mirrors HR_LogicEngineService.conditionsMet on the server.
+ */
+export function ruleConditionsMet(rule, fieldValues) {
+    const conditions = [
+        { triggerFieldApiName: rule.triggerFieldApiName, operator: rule.operator, triggerValue: rule.triggerValue },
+        ...(Array.isArray(rule.additionalConditions) ? rule.additionalConditions : [])
+    ];
+    const useOr = rule.logicGroup === 'OR';
+    const results = conditions.map(c =>
+        matchesCondition(c.operator, fieldValues[c.triggerFieldApiName], c.triggerValue)
+    );
+    return useOr ? results.some(Boolean) : results.every(Boolean);
 }
 
 /**
@@ -44,8 +60,17 @@ export function matchesCondition(operator, fieldValue, triggerValue) {
         case 'less_than':      return parseFloat(fv) < parseFloat(tv);
         case 'greater_equal':  return parseFloat(fv) >= parseFloat(tv);
         case 'less_equal':     return parseFloat(fv) <= parseFloat(tv);
-        case 'in_list':        return tv.split('|').map(v => v.trim()).includes(fv);
-        case 'not_in_list':    return !tv.split('|').map(v => v.trim()).includes(fv);
+        case 'in_list':        return splitList(tv).includes(fv);
+        case 'not_in_list':    return !splitList(tv).includes(fv);
         default:               return false;
     }
+}
+
+/**
+ * Splits a pipe-delimited rule value into trimmed items, honoring "\|" as a literal pipe.
+ * Mirrors HR_LogicEngineService.splitList on the server.
+ */
+function splitList(raw) {
+    if (!raw) return [];
+    return raw.split(/(?<!\\)\|/).map(v => v.replace(/\\\|/g, '|').trim());
 }

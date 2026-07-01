@@ -16,10 +16,9 @@ public with sharing class HR_SubmissionService {
             throw new AuraHandledException(JSON.serialize(errors));
         }
 
-        // 2. Query form config — include published schema for field mapping
+        // 2. Query form config — schema for field mapping comes from the immutable version snapshot
         HR_Form__c form = [
-            SELECT Id, HR_Target_Object_API__c, HR_Record_Type_Dev_Name__c,
-                   HR_Version__c, HR_Published_Schema_JSON__c
+            SELECT Id, HR_Target_Object_API__c, HR_Record_Type_Dev_Name__c, HR_Version__c
             FROM HR_Form__c
             WHERE HR_API_Name__c = :formApiName
               AND HR_Status__c   = 'Published'
@@ -114,13 +113,13 @@ public with sharing class HR_SubmissionService {
     // ─── Private helpers ───────────────────────────────────────────────────────
 
     private static SObject mapToSObject(HR_Form__c form, Map<String, Object> payload) {
-        SObject record = Schema.getGlobalDescribe()
-            .get(form.HR_Target_Object_API__c).newSObject();
+        Schema.SObjectType targetType = Schema.getGlobalDescribe().get(form.HR_Target_Object_API__c);
+        SObject record = targetType.newSObject();
+        Map<String, Schema.SObjectField> targetFields = targetType.getDescribe().fields.getMap();
 
         // Set RecordTypeId if configured
         if (String.isNotBlank(form.HR_Record_Type_Dev_Name__c)) {
-            Id rtId = Schema.getGlobalDescribe()
-                .get(form.HR_Target_Object_API__c)
+            Id rtId = targetType
                 .getDescribe()
                 .getRecordTypeInfosByDeveloperName()
                 .get(form.HR_Record_Type_Dev_Name__c)
@@ -128,11 +127,12 @@ public with sharing class HR_SubmissionService {
             record.put('RecordTypeId', rtId);
         }
 
-        // Read field-to-SF-object mappings from published schema JSON (sfFieldApi property)
-        if (String.isBlank(form.HR_Published_Schema_JSON__c)) return record;
+        // Read field-to-SF-object mappings from the immutable published version snapshot
+        // (sfFieldApi property) — never from a mutable field that could drift post-publish.
+        String schemaJSON = HR_PublishService.getActiveSchemaJSON(form.Id);
+        if (String.isBlank(schemaJSON)) return record;
 
-        Map<String, Object> schema =
-            (Map<String, Object>) JSON.deserializeUntyped(form.HR_Published_Schema_JSON__c);
+        Map<String, Object> schema = (Map<String, Object>) JSON.deserializeUntyped(schemaJSON);
         List<Object> sections = schema.containsKey('sections')
             ? (List<Object>) schema.get('sections') : new List<Object>();
 
@@ -144,6 +144,12 @@ public with sharing class HR_SubmissionService {
                 Map<String, Object> fld = (Map<String, Object>) fldObj;
                 String sfFieldApi = (String) fld.get('sfFieldApi');
                 if (String.isBlank(sfFieldApi)) continue;
+
+                // Per-field FLS: skip mappings to fields the running user cannot create,
+                // rather than relying solely on the final stripInaccessible() over the whole record.
+                Schema.SObjectField targetField = targetFields.get(sfFieldApi.toLowerCase());
+                if (targetField == null || !targetField.getDescribe().isCreateable()) continue;
+
                 String apiName = (String) fld.get('apiName');
                 Object val = payload.get(apiName);
                 if (val != null) {

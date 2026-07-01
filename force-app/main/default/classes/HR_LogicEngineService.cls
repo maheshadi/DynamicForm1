@@ -28,15 +28,16 @@ public with sharing class HR_LogicEngineService {
             String formApiName, Map<String, Object> payload) {
 
         HR_Form__c form = [
-            SELECT HR_Published_Schema_JSON__c
+            SELECT Id
             FROM HR_Form__c
             WHERE HR_API_Name__c = :formApiName AND HR_Status__c = 'Published'
             WITH SECURITY_ENFORCED LIMIT 1
         ];
 
-        Map<String, Object> schema = String.isBlank(form.HR_Published_Schema_JSON__c)
+        String schemaJSON = HR_PublishService.getActiveSchemaJSON(form.Id);
+        Map<String, Object> schema = String.isBlank(schemaJSON)
             ? new Map<String, Object>()
-            : (Map<String, Object>) JSON.deserializeUntyped(form.HR_Published_Schema_JSON__c);
+            : (Map<String, Object>) JSON.deserializeUntyped(schemaJSON);
 
         List<Map<String, Object>> rules = getRulesFromSchema(schema);
         List<HR_SchemaValidator.ValidationError> errors =
@@ -44,11 +45,7 @@ public with sharing class HR_LogicEngineService {
 
         for (Map<String, Object> r : rules) {
             if (r.get('action') != 'Make_Required') continue;
-            String triggerApi = (String) r.get('triggerFieldApiName');
-            String operator   = (String) r.get('operator');
-            String expected   = (String) r.get('triggerValue');
-            Object trigVal    = payload.get(triggerApi);
-            if (matchesCondition(operator, String.valueOf(trigVal), expected)) {
+            if (conditionsMet(r, payload)) {
                 String targetApi  = (String) r.get('targetApiName');
                 Object fieldValue = payload.get(targetApi);
                 if (fieldValue == null || String.isBlank(String.valueOf(fieldValue))) {
@@ -58,6 +55,39 @@ public with sharing class HR_LogicEngineService {
             }
         }
         return errors;
+    }
+
+    // ─── Rule condition group evaluator (AND/OR) ──────────────────────────────
+    // A rule's overall condition is its primary trigger (triggerFieldApiName/operator/
+    // triggerValue) combined with any additionalConditions, joined by logicGroup
+    // ('AND' by default, or 'OR'). Mirrors hrLogicEngine.ruleConditionsMet on the client.
+
+    public static Boolean conditionsMet(Map<String, Object> rule, Map<String, Object> fieldValues) {
+        List<Map<String, Object>> conditions = new List<Map<String, Object>>{
+            new Map<String, Object>{
+                'triggerFieldApiName' => rule.get('triggerFieldApiName'),
+                'operator'            => rule.get('operator'),
+                'triggerValue'        => rule.get('triggerValue')
+            }
+        };
+        if (rule.get('additionalConditions') != null) {
+            for (Object condObj : (List<Object>) rule.get('additionalConditions')) {
+                conditions.add((Map<String, Object>) condObj);
+            }
+        }
+
+        Boolean useOr = 'OR' == (String) rule.get('logicGroup');
+        for (Map<String, Object> cond : conditions) {
+            String triggerApi = (String) cond.get('triggerFieldApiName');
+            Boolean matched = matchesCondition(
+                (String) cond.get('operator'),
+                String.valueOf(fieldValues.get(triggerApi)),
+                (String) cond.get('triggerValue')
+            );
+            if (useOr && matched) return true;
+            if (!useOr && !matched) return false;
+        }
+        return !useOr;
     }
 
     // ─── Condition evaluator ───────────────────────────────────────────────────
@@ -70,13 +100,41 @@ public with sharing class HR_LogicEngineService {
         if (operator == 'starts_with')   return actual != null && actual.startsWith(expected);
         if (operator == 'is_empty')      return String.isBlank(actual);
         if (operator == 'is_not_empty')  return String.isNotBlank(actual);
-        if (operator == 'greater_than')  return Decimal.valueOf(actual) >  Decimal.valueOf(expected);
-        if (operator == 'less_than')     return Decimal.valueOf(actual) <  Decimal.valueOf(expected);
-        if (operator == 'greater_equal') return Decimal.valueOf(actual) >= Decimal.valueOf(expected);
-        if (operator == 'less_equal')    return Decimal.valueOf(actual) <= Decimal.valueOf(expected);
-        if (operator == 'in_list')       return expected != null && expected.split('\\|').contains(actual);
-        if (operator == 'not_in_list')   return expected == null || !expected.split('\\|').contains(actual);
+        if (operator == 'greater_than')  return numericCompare(actual, expected, '>');
+        if (operator == 'less_than')     return numericCompare(actual, expected, '<');
+        if (operator == 'greater_equal') return numericCompare(actual, expected, '>=');
+        if (operator == 'less_equal')    return numericCompare(actual, expected, '<=');
+        if (operator == 'in_list')       return splitList(expected).contains(actual);
+        if (operator == 'not_in_list')   return !splitList(expected).contains(actual);
         return false;
+    }
+
+    // Mirrors the client engine's behavior: a non-numeric value on either side means
+    // "no match" rather than a thrown exception that blocks the whole submission.
+    private static Boolean numericCompare(String actual, String expected, String op) {
+        Decimal a, b;
+        try {
+            a = Decimal.valueOf(actual);
+            b = Decimal.valueOf(expected);
+        } catch (Exception e) {
+            return false;
+        }
+        if (op == '>')  return a >  b;
+        if (op == '<')  return a <  b;
+        if (op == '>=') return a >= b;
+        if (op == '<=') return a <= b;
+        return false;
+    }
+
+    // Splits a pipe-delimited rule value into trimmed items, honoring "\|" as a literal pipe
+    // (splits only on unescaped pipes, then unescapes "\|" back to "|" in each item).
+    private static List<String> splitList(String raw) {
+        List<String> result = new List<String>();
+        if (raw == null) return result;
+        for (String part : raw.split('(?<!\\\\)\\|')) {
+            result.add(part.replace('\\|', '|').trim());
+        }
+        return result;
     }
 
     // ─── Server-side rule evaluation ──────────────────────────────────────────
@@ -84,11 +142,7 @@ public with sharing class HR_LogicEngineService {
     public static void evaluateRules(List<Map<String, Object>> rules,
             Map<String, Object> fieldValues, List<Map<String, Object>> actions) {
         for (Map<String, Object> r : rules) {
-            String triggerApi = (String) r.get('triggerFieldApiName');
-            String operator   = (String) r.get('operator');
-            String expected   = (String) r.get('triggerValue');
-            Object trigVal    = fieldValues.get(triggerApi);
-            if (matchesCondition(operator, String.valueOf(trigVal), expected)) {
+            if (conditionsMet(r, fieldValues)) {
                 actions.add(new Map<String, Object>{
                     'action'        => r.get('action'),
                     'targetType'    => r.get('targetType'),

@@ -138,6 +138,18 @@ public with sharing class HR_SchemaValidator {
                 'Rule target field not found in form: ' + targetApi));
         }
 
+        // Additional AND/OR conditions (see HR_LogicEngineService.conditionsMet)
+        if (rule.get('additionalConditions') != null) {
+            for (Object condObj : (List<Object>) rule.get('additionalConditions')) {
+                Map<String, Object> cond = (Map<String, Object>) condObj;
+                String condField = (String) cond.get('triggerFieldApiName');
+                if (String.isBlank(condField) || !fieldApiNames.contains(condField)) {
+                    errors.add(new ValidationError('rule.additionalCondition',
+                        'Rule condition field not found in form: ' + condField));
+                }
+            }
+        }
+
         // Validate SOQL filter fragments for injection risks
         String filterSOQL = (String) rule.get('lookupFilterSOQL');
         if (String.isNotBlank(filterSOQL)) {

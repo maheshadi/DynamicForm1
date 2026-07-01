@@ -15,9 +15,9 @@ public with sharing class HR_FormRendererController {
         // 1. Validate access
         HR_AccessService.assertCanView(formApiName);
 
-        // 2. Query published schema only — SECURITY_ENFORCED prevents FLS bypass
+        // 2. Query published form config — SECURITY_ENFORCED prevents FLS bypass
         List<HR_Form__c> forms = [
-            SELECT HR_Published_Schema_JSON__c, HR_Allow_Draft_Save__c,
+            SELECT Id, HR_Allow_Draft_Save__c,
                    HR_On_Submit_Action__c, HR_Success_Message__c,
                    HR_Redirect_URL__c, HR_Require_Confirmation__c,
                    HR_Target_Object_API__c, HR_Record_Type_Dev_Name__c
@@ -33,15 +33,17 @@ public with sharing class HR_FormRendererController {
         }
         HR_Form__c form = forms[0];
 
-        // 3. Parse the published schema once — rules are embedded under the 'rules' key
+        // 3. Parse the schema from the immutable active version snapshot — never from a
+        // mutable field that could drift from what was actually published.
+        String schemaJSON = HR_PublishService.getActiveSchemaJSON(form.Id);
         Map<String, Object> schema;
-        if (String.isBlank(form.HR_Published_Schema_JSON__c)) {
+        if (String.isBlank(schemaJSON)) {
             schema = new Map<String, Object>{
                 'sections' => new List<Object>(),
                 'rules'    => new List<Object>()
             };
         } else {
-            schema = (Map<String, Object>) JSON.deserializeUntyped(form.HR_Published_Schema_JSON__c);
+            schema = (Map<String, Object>) JSON.deserializeUntyped(schemaJSON);
         }
 
         // 4. Extract logic bundle from the schema (client uses this separately)

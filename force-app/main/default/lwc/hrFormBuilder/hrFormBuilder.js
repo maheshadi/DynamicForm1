@@ -28,6 +28,8 @@ export default class HrFormBuilder extends LightningElement {
     @track isPublishing       = false;
     @track toastMessage       = null;
     @track toastVariant       = 'success';
+    @track autoSaveFailed     = false;
+    @track autoSaveError      = null;
 
     _autoSaveTimer = null;
     _autoSaveIntervalSec = AUTO_SAVE_DEFAULT_SEC;
@@ -311,6 +313,8 @@ export default class HrFormBuilder extends LightningElement {
         if (savedId && !this.formSchema.id) {
             this.formSchema = { ...this.formSchema, id: savedId };
         }
+        this.autoSaveFailed = false;
+        this.autoSaveError = null;
         return savedId;
     }
 
@@ -319,7 +323,10 @@ export default class HrFormBuilder extends LightningElement {
         this._autoSaveTimer = setInterval(() => {
             if (!this.isSaving && this.formSchema.apiName) {
                 this._saveDraft().catch(e => {
-                    console.error('[HR Form Builder] Auto-save failed:', this._errorMessage(e));
+                    const message = this._errorMessage(e);
+                    console.error('[HR Form Builder] Auto-save failed:', message);
+                    this.autoSaveFailed = true;
+                    this.autoSaveError = message;
                 });
             }
         }, this._autoSaveIntervalSec * 1000);

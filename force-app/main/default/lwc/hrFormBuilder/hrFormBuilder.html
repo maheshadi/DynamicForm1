@@ -32,6 +32,15 @@
                     </div>
                 </div>
 
+                <!-- Auto-save failure banner (persistent until next successful save) -->
+                <template if:true={autoSaveFailed}>
+                    <div class="slds-notify slds-notify_alert slds-theme_warning slds-m-horizontal_small" role="alert">
+                        <lightning-icon icon-name="utility:warning" size="x-small"
+                            class="slds-m-right_x-small" variant="inverse"></lightning-icon>
+                        Auto-save failed — your latest changes are not saved yet ({autoSaveError}). Click "Save Draft" to retry.
+                    </div>
+                </template>
+
                 <!-- Schema JSON size indicator -->
                 <div class="slds-p-horizontal_medium slds-p-bottom_x-small">
                     <lightning-progress-bar value={schemaUsagePercent} size="x-small"

@@ -101,6 +101,22 @@ public with sharing class HR_PublishService {
         HR_AuditService.logAsync('Form_Rolled_Back', formId, null);
     }
 
+    // ─── Immutable schema access ───────────────────────────────────────────────
+    // The renderer and submission pipeline must read the schema that was actually
+    // published from the immutable HR_Form_Version__c snapshot, not from
+    // HR_Form__c.HR_Published_Schema_JSON__c (a plain field that could be edited
+    // or corrupted outside the publish flow).
+
+    public static String getActiveSchemaJSON(Id formId) {
+        List<HR_Form_Version__c> versions = [
+            SELECT HR_Schema_Snapshot__c
+            FROM HR_Form_Version__c
+            WHERE HR_Form__c = :formId AND HR_Is_Active_Version__c = true
+            WITH SECURITY_ENFORCED LIMIT 1
+        ];
+        return versions.isEmpty() ? null : versions[0].HR_Schema_Snapshot__c;
+    }
+
     // ─── Private helpers ───────────────────────────────────────────────────────
 
     private static void assertAdminPermission() {

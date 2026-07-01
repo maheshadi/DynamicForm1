@@ -49,23 +49,20 @@ public with sharing class HR_FormSchemaService {
 
     @AuraEnabled
     public static String saveForm(Map<String, Object> formData) {
-        String schemaJSON = (String) formData.get('schemaJSON');
-        List<HR_SchemaValidator.ValidationError> errors = HR_SchemaValidator.validate(schemaJSON);
-        if (!errors.isEmpty()) {
-            throw new AuraHandledException(JSON.serialize(errors));
-        }
-
         String formId = (String) formData.get('id');
-        HR_Form__c form;
+        String apiName = (String) formData.get('apiName');
 
+        HR_Form__c form;
         if (String.isNotBlank(formId)) {
             form = [SELECT Id, HR_Version__c FROM HR_Form__c WHERE Id = :formId WITH SECURITY_ENFORCED LIMIT 1];
         } else {
             form = new HR_Form__c();
         }
 
+        String schemaJSON = (String) formData.get('schemaJSON');
+
         form.Name                       = (String)  formData.get('name');
-        form.HR_API_Name__c             = (String)  formData.get('apiName');
+        form.HR_API_Name__c             = apiName;
         form.HR_Category__c             = (String)  formData.get('category');
         form.HR_Description__c          = (String)  formData.get('description');
         form.HR_Tags__c                 = (String)  formData.get('tags');
@@ -79,11 +76,21 @@ public with sharing class HR_FormSchemaService {
         form.HR_Allow_Draft_Save__c     = (Boolean) formData.get('allowDraftSave');
         form.HR_Require_Confirmation__c = (Boolean) formData.get('requireConfirmation');
 
+        // FLS check first: skip the (expensive) schema validation entirely if the
+        // user isn't even allowed to write these fields.
         SObjectAccessDecision decision = Security.stripInaccessible(
             String.isNotBlank(formId) ? AccessType.UPDATABLE : AccessType.CREATABLE,
             new List<SObject>{ form }
         );
         SObject saved = decision.getRecords()[0];
+
+        assertApiNameUnique(apiName, formId);
+
+        List<HR_SchemaValidator.ValidationError> errors = HR_SchemaValidator.validate(schemaJSON);
+        if (!errors.isEmpty()) {
+            throw new AuraHandledException(JSON.serialize(errors));
+        }
+
         upsert saved;
         String savedId = (String) saved.get('Id');
 
@@ -93,6 +100,25 @@ public with sharing class HR_FormSchemaService {
         );
 
         return savedId;
+    }
+
+    // ─── Helpers ───────────────────────────────────────────────────────────────
+
+    private static void assertApiNameUnique(String apiName, String formId) {
+        if (String.isBlank(apiName)) {
+            return;
+        }
+        List<HR_Form__c> conflicts = [
+            SELECT Id FROM HR_Form__c
+            WHERE HR_API_Name__c = :apiName AND Id != :formId
+            WITH SECURITY_ENFORCED
+            LIMIT 1
+        ];
+        if (!conflicts.isEmpty()) {
+            throw new AuraHandledException(
+                'A form with API name "' + apiName + '" already exists. Choose a unique API name.'
+            );
+        }
     }
 
     @AuraEnabled

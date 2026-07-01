@@ -1,4 +1,5 @@
 <template>
-    <lightning-combobox value={value} options={options} placeholder={placeholder}
+    <lightning-combobox label={field.label} variant="label-hidden"
+        value={value} options={options} placeholder={placeholder}
         disabled={isDisabled} required={field.required} onchange={handleChange}></lightning-combobox>
 </template>

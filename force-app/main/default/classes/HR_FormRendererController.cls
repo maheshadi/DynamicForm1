@@ -20,7 +20,8 @@ public with sharing class HR_FormRendererController {
             SELECT Id, HR_Allow_Draft_Save__c,
                    HR_On_Submit_Action__c, HR_Success_Message__c,
                    HR_Redirect_URL__c, HR_Require_Confirmation__c,
-                   HR_Target_Object_API__c, HR_Record_Type_Dev_Name__c
+                   HR_Target_Object_API__c, HR_Record_Type_Dev_Name__c,
+                   HR_Published_Schema_JSON__c
             FROM HR_Form__c
             WHERE HR_API_Name__c = :formApiName
               AND HR_Status__c   = 'Published'
@@ -33,9 +34,13 @@ public with sharing class HR_FormRendererController {
         }
         HR_Form__c form = forms[0];
 
-        // 3. Parse the schema from the immutable active version snapshot — never from a
-        // mutable field that could drift from what was actually published.
+        // 3. Prefer the immutable active version snapshot — never a mutable field that could
+        // drift from what was published. Fall back to HR_Published_Schema_JSON__c for forms
+        // published before version snapshots existed, so the renderer never shows an empty form.
         String schemaJSON = HR_PublishService.getActiveSchemaJSON(form.Id);
+        if (String.isBlank(schemaJSON)) {
+            schemaJSON = form.HR_Published_Schema_JSON__c;
+        }
         Map<String, Object> schema;
         if (String.isBlank(schemaJSON)) {
             schema = new Map<String, Object>{

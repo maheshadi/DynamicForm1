@@ -1,5 +1,6 @@
 <template>
-    <lightning-input type="number" value={value} min={field.minValue} max={field.maxValue}
+    <lightning-input type="number" label={field.label} variant="label-hidden"
+        value={value} min={field.minValue} max={field.maxValue}
         formatter={formatter} placeholder={field.placeholder} disabled={isDisabled}
         required={field.required} onchange={handleChange}></lightning-input>
 </template>

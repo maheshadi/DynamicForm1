@@ -8,7 +8,8 @@ export default class HrFormField extends LightningElement {
 
     get labelClass()   { return 'slds-text-body_small'; }
     get showRequired() { return this.isRequired || !!(this.field && this.field.required); }
-    get isLabelHidden(){ return !!(this.field.hideLabel || this.field.labelPosition === 'hidden'); }
+    // File upload renders its own (required) label, so suppress the wrapper's to avoid a duplicate.
+    get isLabelHidden(){ return !!(this.field.hideLabel || this.field.labelPosition === 'hidden' || this.isFileUpload); }
     get labelStyle()   { return this.field.labelColor ? 'color:' + this.field.labelColor + ';' : ''; }
     get fieldContainerClass() {
         let cls = 'hr-form-field';

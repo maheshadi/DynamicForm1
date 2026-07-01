@@ -30,13 +30,15 @@ public with sharing class HR_FormSchemaService {
 
     @AuraEnabled(cacheable=true)
     public static List<HR_Form__c> getFormLibrary(String category, String status) {
-        String baseStatus = String.isBlank(status) ? 'Published' : status;
+        // Blank status = return every status. The library fetches once and filters
+        // client-side, so defaulting to Published here would hide drafts (including
+        // freshly cloned forms) and zero out the Draft/Archived counts.
         String soql = 'SELECT Id, Name, HR_API_Name__c, HR_Status__c, HR_Category__c, '
                     + 'HR_Version__c, HR_Tags__c, HR_Description__c, '
                     + 'HR_Last_Published_Date__c, HR_Total_Submissions__c, LastModifiedDate '
                     + 'FROM HR_Form__c WHERE Id != null ';
-        if (String.isNotBlank(baseStatus)) {
-            soql += 'AND HR_Status__c = :baseStatus ';
+        if (String.isNotBlank(status)) {
+            soql += 'AND HR_Status__c = :status ';
         }
         if (String.isNotBlank(category)) {
             soql += 'AND HR_Category__c = :category ';
@@ -142,11 +144,17 @@ public with sharing class HR_FormSchemaService {
             FROM HR_Form__c WHERE Id = :formId WITH SECURITY_ENFORCED LIMIT 1
         ];
 
+        String newName    = 'Copy of ' + src.Name;
+        String newApiName = src.HR_API_Name__c + '_copy_' + String.valueOf(Datetime.now().getTime());
+
         HR_Form__c clone = src.clone(false, true, false, false);
-        clone.Name           = 'Copy of ' + src.Name;
-        clone.HR_API_Name__c = src.HR_API_Name__c + '_copy_' + String.valueOf(Datetime.now().getTime());
+        clone.Name           = newName;
+        clone.HR_API_Name__c = newApiName;
         clone.HR_Status__c   = 'Draft';
         clone.HR_Version__c  = 1;
+        // Keep the schema JSON's embedded identity in sync with the new record so the
+        // clone doesn't carry the source form's name/apiName until it's re-saved.
+        clone.HR_Schema_JSON__c = syncSchemaIdentity(src.HR_Schema_JSON__c, newName, newApiName);
 
         SObjectAccessDecision dec = Security.stripInaccessible(AccessType.CREATABLE, new List<SObject>{ clone });
         SObject inserted = dec.getRecords()[0];
@@ -155,6 +163,22 @@ public with sharing class HR_FormSchemaService {
 
         HR_AuditService.logAsync('Form_Cloned', cloneId, null);
         return cloneId;
+    }
+
+    private static String syncSchemaIdentity(String schemaJSON, String name, String apiName) {
+        if (String.isBlank(schemaJSON)) {
+            return schemaJSON;
+        }
+        try {
+            Map<String, Object> schema = (Map<String, Object>) JSON.deserializeUntyped(schemaJSON);
+            schema.put('name', name);
+            schema.put('apiName', apiName);
+            schema.put('status', 'Draft');
+            return JSON.serialize(schema);
+        } catch (Exception e) {
+            // Malformed JSON: leave the copy as-is rather than blocking the clone.
+            return schemaJSON;
+        }
     }
 
     // ─── Exceptions ────────────────────────────────────────────────────────────

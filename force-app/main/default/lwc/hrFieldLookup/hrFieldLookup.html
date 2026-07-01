@@ -2,6 +2,8 @@
     <div class="hr-field-lookup">
         <lightning-input
             type="search"
+            label={field.label}
+            variant="label-hidden"
             value={searchTerm}
             placeholder={field.placeholder}
             disabled={isDisabled}

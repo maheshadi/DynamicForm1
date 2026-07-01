@@ -1,5 +1,6 @@
 <template>
-    <lightning-dual-listbox options={options} value={selectedValues}
+    <lightning-dual-listbox label={field.label} variant="label-hidden"
+        options={options} value={selectedValues}
         disabled={isDisabled} required={field.required}
         field-level-help={field.helpText} onchange={handleChange}></lightning-dual-listbox>
 </template>

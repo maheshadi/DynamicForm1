@@ -18,3 +18,18 @@
     overflow-y: auto;
     height: 100%;
 }
+.hr-form-name-link {
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+.hr-form-name-link:hover {
+    color: #0070d2;
+    text-decoration: underline;
+}
+.hr-form-name-link lightning-icon {
+    opacity: 0.55;
+}
+.hr-form-name-link:hover lightning-icon {
+    opacity: 1;
+}

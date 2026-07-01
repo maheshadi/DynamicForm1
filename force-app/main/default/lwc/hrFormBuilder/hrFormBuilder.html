@@ -14,7 +14,10 @@
                 <!-- Toolbar -->
                 <div class="slds-card__header slds-grid slds-grid_align-spread slds-p-around_small">
                     <h2 class="slds-card__header-title slds-text-heading_medium">
-                        {formSchema.name}
+                        <a href="#" class="hr-form-name-link" title="Edit form name & settings" onclick={handleEditFormSettings}>
+                            {formSchema.name}
+                            <lightning-icon icon-name="utility:edit" size="xx-small" class="slds-m-left_xx-small"></lightning-icon>
+                        </a>
                         <span class="slds-badge slds-m-left_x-small">{statusLabel}</span>
                         <template if:true={hasUnpublishedChanges}>
                             <span class="slds-badge slds-theme_warning slds-m-left_x-small" title="Your draft has changes that are not yet live. Click Publish to update the published form.">

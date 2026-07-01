@@ -121,9 +121,33 @@ export default class HrBuilderProperties extends LightningElement {
         return s;
     }
 
+    // Tracks whether the user has manually edited the form API name. Once they do,
+    // we stop auto-deriving it from the form name (matches Salesforce field behavior).
+    _apiNameTouched = false;
+
     handleFormChange(evt) {
-        const f = evt.target.dataset.field;
-        this._dispatch(null, 'form', { [f]: this._coerce(f, this._readValue(evt)) });
+        const f   = evt.target.dataset.field;
+        const raw = this._readValue(evt);
+
+        if (f === 'apiName') {
+            this._apiNameTouched = true;
+            const clean = this._sanitizeApiName(raw);
+            this._dispatch(null, 'form', { apiName: clean });
+            return;
+        }
+
+        if (f === 'name') {
+            const changes = { name: raw };
+            // Auto-populate the API name from the form name (Salesforce-style) only for
+            // a new, unsaved form whose API name the user hasn't manually set yet.
+            if (!this.formSchema.id && !this._apiNameTouched) {
+                changes.apiName = this._sanitizeApiName(raw);
+            }
+            this._dispatch(null, 'form', changes);
+            return;
+        }
+
+        this._dispatch(null, 'form', { [f]: this._coerce(f, raw) });
     }
     handleFormToggle(evt)    { this._dispatch(null, 'form', { [evt.target.dataset.field]: evt.target.checked }); }
     handleSectionChange(evt) {

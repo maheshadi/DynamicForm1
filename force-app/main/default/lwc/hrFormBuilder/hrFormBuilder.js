@@ -51,11 +51,35 @@ export default class HrFormBuilder extends LightningElement {
     }
 
     _loadPendingForm() {
+        // "New Form" from the library sets this signal. Reset to a blank form so a
+        // previously-edited form isn't left rendered in the reused builder instance.
+        if (sessionStorage.getItem('hrfc_newForm')) {
+            sessionStorage.removeItem('hrfc_newForm');
+            sessionStorage.removeItem('hrfc_editFormApiName');
+            this._resetToNewForm();
+            return;
+        }
         const pending = sessionStorage.getItem('hrfc_editFormApiName');
         if (pending && pending !== this.formSchema.apiName) {
             sessionStorage.removeItem('hrfc_editFormApiName');
             this._loadForm(pending);
         }
+    }
+
+    _resetToNewForm() {
+        this.formSchema = {
+            id: null, name: 'Untitled Form', apiName: '', category: 'General',
+            status: 'Draft', sections: [], rules: [],
+            targetObjectApi: 'Case', deploymentTarget: 'LWC_Component',
+            onSubmitAction: 'Show_Message', successMessage: '',
+            redirectUrl: '', allowDraftSave: true, requireConfirmation: false,
+            tags: '', description: ''
+        };
+        this.selectedFieldId   = null;
+        this.selectedSectionId = null;
+        this._publishedSchema  = null;
+        this.autoSaveFailed    = false;
+        this.autoSaveError     = null;
     }
 
     disconnectedCallback() {
@@ -152,6 +176,15 @@ export default class HrFormBuilder extends LightningElement {
 
     handleFieldSelected(evt)   { this.selectedFieldId = evt.detail.fieldId; this.selectedSectionId = null; }
     handleSectionSelected(evt) { this.selectedSectionId = evt.detail.sectionId; this.selectedFieldId = null; }
+
+    // Clicking the form name deselects any field/section so the Properties panel
+    // shows Form Settings — lets the user edit name/API name/details at any time,
+    // even after sections and fields have been added.
+    handleEditFormSettings(evt) {
+        if (evt) evt.preventDefault();
+        this.selectedFieldId   = null;
+        this.selectedSectionId = null;
+    }
 
     handleFieldRemoved(evt) {
         const { fieldId } = evt.detail;

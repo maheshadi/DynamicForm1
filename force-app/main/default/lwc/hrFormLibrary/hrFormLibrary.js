@@ -3,6 +3,8 @@ import { NavigationMixin } from 'lightning/navigation';
 import getFormLibrary from '@salesforce/apex/HR_FormSchemaService.getFormLibrary';
 import cloneFormApex  from '@salesforce/apex/HR_FormSchemaService.cloneForm';
 import getFormApex    from '@salesforce/apex/HR_FormSchemaService.getForm';
+import deleteFormApex from '@salesforce/apex/HR_FormSchemaService.deleteForm';
+import hasAdminPermission from '@salesforce/customPermission/HR_Form_Admin';
 import { refreshApex } from '@salesforce/apex';
 
 const PAGE_SIZE = 9;
@@ -35,6 +37,11 @@ export default class HrFormLibrary extends NavigationMixin(LightningElement) {
     @track toastMessage  = '';
     @track toastVariant  = 'success';
     @track isCloning     = false;
+    @track showDeleteConfirm = false;
+    @track deleteTargetId    = '';
+    @track deleteTargetName  = '';
+    @track deleteSubmissions = 0;
+    @track isDeleting        = false;
 
     _wiredResult;
 
@@ -101,6 +108,15 @@ export default class HrFormLibrary extends NavigationMixin(LightningElement) {
     get archivedCount()  { return this.allForms.filter(f => f.status === 'Archived').length; }
     get categoryCount()  { return new Set(this.allForms.map(f => f.category)).size; }
     get toastIcon()      { return 'utility:' + (this.toastVariant === 'success' ? 'success' : (this.toastVariant === 'warning' ? 'warning' : 'error')); }
+    get canDelete()      { return hasAdminPermission; }
+    get deleteMessage()  {
+        const base = 'This permanently deletes "' + this.deleteTargetName +
+            '" and ALL associated data — every version, access rule';
+        return this.deleteSubmissions > 0
+            ? base + ', and ' + this.deleteSubmissions + ' submission(s). This cannot be undone.'
+            : base + ', and its submissions. This cannot be undone.';
+    }
+    get deleteButtonLabel() { return this.isDeleting ? 'Deleting…' : 'Delete Form'; }
 
     get categories() {
         const cats = [...new Set(this.allForms.map(f => f.category))].sort();
@@ -217,10 +233,47 @@ export default class HrFormLibrary extends NavigationMixin(LightningElement) {
     }
 
     handleNewForm() {
+        // Signal the (reused) builder instance to reset to a blank form, and clear any
+        // pending edit so it doesn't re-render the previously edited form.
+        sessionStorage.removeItem('hrfc_editFormApiName');
+        sessionStorage.setItem('hrfc_newForm', '1');
         this[NavigationMixin.Navigate]({
             type: 'standard__navItemPage',
             attributes: { apiName: 'HR_Form_Builder' }
         });
+    }
+
+    // ── Delete ────────────────────────────────────────────────────────────────
+    handleDeleteClick(evt) {
+        const id   = evt.currentTarget.dataset.id;
+        const form = this.allForms.find(f => f.id === id);
+        if (!form) return;
+        this.deleteTargetId    = id;
+        this.deleteTargetName  = form.name;
+        this.deleteSubmissions = form.totalSubs || 0;
+        this.showDeleteConfirm = true;
+    }
+
+    handleCancelDelete() {
+        this.showDeleteConfirm = false;
+        this.deleteTargetId    = '';
+        this.deleteTargetName  = '';
+        this.deleteSubmissions = 0;
+    }
+
+    async handleConfirmDelete() {
+        if (!this.deleteTargetId) return;
+        this.isDeleting = true;
+        try {
+            await deleteFormApex({ formId: this.deleteTargetId });
+            await refreshApex(this._wiredResult);
+            this._toast('"' + this.deleteTargetName + '" and all related data were deleted.', 'success');
+            this.handleCancelDelete();
+        } catch (e) {
+            this._toast('Delete failed: ' + ((e && e.body && e.body.message) || 'Unknown error'), 'error');
+        } finally {
+            this.isDeleting = false;
+        }
     }
 
     handleImport() { this._toast('Import from file — coming in next release.', 'warning'); }

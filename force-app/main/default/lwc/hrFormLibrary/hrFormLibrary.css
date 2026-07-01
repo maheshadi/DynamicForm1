@@ -223,6 +223,16 @@
     color: #fff;
     border-color: #0070d2;
 }
+.fc-btn-danger {
+    background: #fff;
+    color: #ba0517;
+    border-color: #ba0517;
+}
+.fc-btn-danger:hover {
+    background: #ba0517;
+    color: #fff;
+    opacity: 1;
+}
 
 /* ── Pagination ────────────────────────────────────────────────────── */
 .fc-pagination {

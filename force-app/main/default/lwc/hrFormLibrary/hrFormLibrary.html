@@ -183,10 +183,15 @@
                     <h2 class="slds-modal__title">{previewFormName}</h2>
                 </header>
                 <div class="slds-modal__content slds-p-around_medium">
-                    <c-hr-form-renderer
-                        form-api-name={previewFormApiName}
-                        hide-footer>
-                    </c-hr-form-renderer>
+                    <template if:true={previewLoading}>
+                        <lightning-spinner alternative-text="Loading preview..." size="medium"></lightning-spinner>
+                    </template>
+                    <template if:true={previewSchema}>
+                        <c-hr-form-renderer
+                            override-schema={previewSchema}
+                            hide-footer>
+                        </c-hr-form-renderer>
+                    </template>
                 </div>
                 <footer class="slds-modal__footer slds-grid slds-grid_align-spread">
                     <button class="slds-button slds-button_neutral" onclick={handlePreviewReset}>

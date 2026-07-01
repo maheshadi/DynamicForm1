@@ -69,6 +69,11 @@ export default class HrFormRenderer extends NavigationMixin(LightningElement) {
     get hasFormSelected() {
         return !!(this._overrideSchema) || !!(this.formApiName && this.formApiName.trim());
     }
+    // Submit/saveDraft need an API name even when the schema is supplied directly
+    // (builder & library preview pass override-schema); fall back to the schema's own.
+    get _effectiveApiName() {
+        return this.formApiName || (this._overrideSchema && this._overrideSchema.apiName) || null;
+    }
     get isReady()        { return !this.isLoading && !this.hasError && !!this._schema; }
     get successMessage() { return this.config.successMessage || 'Your form has been submitted successfully.'; }
 
@@ -117,7 +122,7 @@ export default class HrFormRenderer extends NavigationMixin(LightningElement) {
     async handleSaveDraft() {
         try {
             await saveDraftApex({
-                formApiName: this.formApiName,
+                formApiName: this._effectiveApiName,
                 payloadJSON: JSON.stringify(this.fieldValues)
             });
             this.hasDraft = true;
@@ -213,7 +218,7 @@ export default class HrFormRenderer extends NavigationMixin(LightningElement) {
         try {
             const durationSec = this._startTime ? Math.round((Date.now() - this._startTime) / 1000) : 0;
             await submitFormApex({
-                formApiName: this.formApiName,
+                formApiName: this._effectiveApiName,
                 payloadJSON: JSON.stringify(this.fieldValues),
                 durationSec
             });

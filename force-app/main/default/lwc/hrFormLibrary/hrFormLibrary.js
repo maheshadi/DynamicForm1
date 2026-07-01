@@ -2,6 +2,7 @@ import { LightningElement, track, wire } from 'lwc';
 import { NavigationMixin } from 'lightning/navigation';
 import getFormLibrary from '@salesforce/apex/HR_FormSchemaService.getFormLibrary';
 import cloneFormApex  from '@salesforce/apex/HR_FormSchemaService.cloneForm';
+import getFormApex    from '@salesforce/apex/HR_FormSchemaService.getForm';
 import { refreshApex } from '@salesforce/apex';
 
 const PAGE_SIZE = 9;
@@ -29,6 +30,8 @@ export default class HrFormLibrary extends NavigationMixin(LightningElement) {
     @track showPreview        = false;
     @track previewFormApiName = '';
     @track previewFormName    = '';
+    @track previewSchema      = null;
+    @track previewLoading     = false;
     @track toastMessage  = '';
     @track toastVariant  = 'success';
     @track isCloning     = false;
@@ -140,18 +143,59 @@ export default class HrFormLibrary extends NavigationMixin(LightningElement) {
         }
     }
 
-    handlePreview(evt) {
+    async handlePreview(evt) {
         const id   = evt.currentTarget.dataset.id;
         const form = this.allForms.find(f => f.id === id);
-        if (form && form.apiName) {
-            this.previewFormApiName = form.apiName;
-            this.previewFormName    = form.name;
-            this.showPreview        = true;
-        } else {
+        if (!form || !form.apiName) {
             this._toast('No API name configured for preview.', 'warning');
+            return;
+        }
+        this.previewFormApiName = form.apiName;
+        this.previewFormName    = form.name;
+        this.previewSchema      = null;
+        this.previewLoading     = true;
+        this.showPreview        = true;
+        try {
+            // Render the SAME working schema the builder preview shows, so both
+            // previews are always identical. getForm returns the current draft
+            // (with published fallback when the draft is empty).
+            const rec = await getFormApex({ formApiName: form.apiName });
+            this.previewSchema = this._assemblePreviewSchema(rec, form.apiName);
+        } catch (e) {
+            this._toast('Could not load preview: ' + ((e && e.body && e.body.message) || 'Unknown error'), 'error');
+            this.showPreview = false;
+        } finally {
+            this.previewLoading = false;
         }
     }
-    handleClosePreview()      { this.showPreview = false; this.previewFormApiName = ''; }
+
+    // Mirrors hrFormBuilder._loadForm so the Library preview and the Builder
+    // preview render byte-for-byte the same schema.
+    _assemblePreviewSchema(rec, apiName) {
+        if (!rec) return null;
+        const draft = rec.HR_Schema_JSON__c ? JSON.parse(rec.HR_Schema_JSON__c) : {};
+        const pub   = rec.HR_Published_Schema_JSON__c ? JSON.parse(rec.HR_Published_Schema_JSON__c) : null;
+        if (pub && !(draft.sections && draft.sections.length > 0)) {
+            draft.sections = pub.sections || [];
+            draft.rules    = pub.rules    || [];
+        }
+        return {
+            ...draft,
+            name:                rec.Name                       || draft.name,
+            apiName:             rec.HR_API_Name__c             || apiName,
+            allowDraftSave:      rec.HR_Allow_Draft_Save__c     != null ? rec.HR_Allow_Draft_Save__c     : draft.allowDraftSave,
+            requireConfirmation: rec.HR_Require_Confirmation__c != null ? rec.HR_Require_Confirmation__c : draft.requireConfirmation,
+            successMessage:      rec.HR_Success_Message__c      || draft.successMessage,
+            redirectUrl:         rec.HR_Redirect_URL__c         || draft.redirectUrl,
+            onSubmitAction:      rec.HR_On_Submit_Action__c     || draft.onSubmitAction
+        };
+    }
+
+    handleClosePreview() {
+        this.showPreview        = false;
+        this.previewFormApiName = '';
+        this.previewSchema      = null;
+    }
     handlePreviewSubmit()     { this.template.querySelector('c-hr-form-renderer')?.submit(); }
     handlePreviewSaveDraft()  { this.template.querySelector('c-hr-form-renderer')?.saveDraft(); }
     handlePreviewReset()      { this.template.querySelector('c-hr-form-renderer')?.reset(); }

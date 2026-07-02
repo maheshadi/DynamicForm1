@@ -196,28 +196,17 @@ public with sharing class HR_SchemaValidator {
         ) : cfgs[0];
     }
 
+    // Registry of valid field types, stored lowercase (the field's type is lowercased
+    // before lookup). This mirrors the palette in hrBuilderPalette and the render
+    // switch in hrFormField — those are the authoritative source of field types.
     private static Set<String> getValidFieldTypes() {
-        Set<String> types = new Set<String>();
-        // Load from CMDT (case-insensitive — store lowercase)
-        for (HR_Field_Type_Config__mdt ftc : [
-            SELECT HR_Type_API__c FROM HR_Field_Type_Config__mdt
-            WHERE HR_Is_Active__c = true
-        ]) {
-            if (String.isNotBlank(ftc.HR_Type_API__c)) {
-                types.add(ftc.HR_Type_API__c.toLowerCase());
-            }
-        }
-        // Hardcoded fallback — covers both PascalCase and lowercase variants
-        if (types.isEmpty()) {
-            types.addAll(new Set<String>{
-                'text_input','text','number','currency','date_picker','date','datetime',
-                'email','phone','url','text_area','textarea','rich_text','richtext',
-                'dropdown','radio_group','radio','checkbox','multi_select','multiselect',
-                'lookup','current_user','currentuser','record_field','recordfield',
-                'section_header','sectionheader','info_block','infobox','instructions',
-                'divider','file_upload','fileupload','percentage'
-            });
-        }
-        return types;
+        return new Set<String>{
+            'text_input','text','number','currency','date_picker','date','datetime',
+            'email','phone','url','text_area','textarea','rich_text','richtext',
+            'dropdown','radio_group','radio','checkbox','multi_select','multiselect',
+            'lookup','current_user','currentuser','record_field','recordfield',
+            'section_header','sectionheader','info_block','infobox','instructions',
+            'divider','file_upload','fileupload','percentage'
+        };
     }
 }

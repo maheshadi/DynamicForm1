@@ -16,12 +16,6 @@ public with sharing class HR_LogicEngineService {
         return result;
     }
 
-    // ─── Compile rules into JSON string for the client logic engine ───────────
-
-    public static String compileRules(List<Map<String, Object>> rules) {
-        return JSON.serialize(rules);
-    }
-
     // ─── Server-side submission validation ────────────────────────────────────
 
     public static List<HR_SchemaValidator.ValidationError> validateSubmission(
@@ -135,21 +129,5 @@ public with sharing class HR_LogicEngineService {
             result.add(part.replace('\\|', '|').trim());
         }
         return result;
-    }
-
-    // ─── Server-side rule evaluation ──────────────────────────────────────────
-
-    public static void evaluateRules(List<Map<String, Object>> rules,
-            Map<String, Object> fieldValues, List<Map<String, Object>> actions) {
-        for (Map<String, Object> r : rules) {
-            if (conditionsMet(r, fieldValues)) {
-                actions.add(new Map<String, Object>{
-                    'action'        => r.get('action'),
-                    'targetType'    => r.get('targetType'),
-                    'targetApiName' => r.get('targetApiName'),
-                    'actionValue'   => r.get('actionValue')
-                });
-            }
-        }
     }
 }

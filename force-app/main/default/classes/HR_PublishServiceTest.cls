@@ -32,9 +32,12 @@ private class HR_PublishServiceTest {
     static void testPublishForm() {
         // Must have HR_Form_Admin permission — system mode via runAs
         Profile sysAdmin = [SELECT Id FROM Profile WHERE Name = 'System Administrator' LIMIT 1];
+        // Reuse the running user's email domain — orgs (like this sandbox) may have
+        // validation rules restricting User.Email to approved domains.
+        String emailDomain = UserInfo.getUserEmail().substringAfter('@');
         User adminUser = new User(
             FirstName = 'FC', LastName = 'Admin',
-            Email = 'fcadmin@formcraft.test.com',
+            Email = 'fcadmin@' + emailDomain,
             Username = 'fcadmin@formcraft.test.com.' + String.valueOf(Datetime.now().getTime()),
             Alias = 'fcadm',
             TimeZoneSidKey = 'America/Los_Angeles',
@@ -43,7 +46,13 @@ private class HR_PublishServiceTest {
             LanguageLocaleKey = 'en_US',
             ProfileId = sysAdmin.Id
         );
-        insert adminUser;
+        // HR_Form_Admin is a custom permission granted via HR_Admin_PS — assign it,
+        // isolated in runAs to avoid MIXED_DML with the form records below.
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            insert adminUser;
+            PermissionSet ps = [SELECT Id FROM PermissionSet WHERE Name = 'HR_Admin_PS' LIMIT 1];
+            insert new PermissionSetAssignment(AssigneeId = adminUser.Id, PermissionSetId = ps.Id);
+        }
 
         HR_Form__c form;
         System.runAs(adminUser) {
@@ -68,9 +77,10 @@ private class HR_PublishServiceTest {
     @IsTest
     static void testArchiveForm() {
         Profile sysAdmin = [SELECT Id FROM Profile WHERE Name = 'System Administrator' LIMIT 1];
+        String emailDomain = UserInfo.getUserEmail().substringAfter('@');
         User adminUser = new User(
             FirstName = 'FC', LastName = 'Arch',
-            Email = 'fcarch@formcraft.test.com',
+            Email = 'fcarch@' + emailDomain,
             Username = 'fcarch@formcraft.test.com.' + String.valueOf(Datetime.now().getTime()),
             Alias = 'fcarc',
             TimeZoneSidKey = 'America/Los_Angeles',
@@ -79,7 +89,11 @@ private class HR_PublishServiceTest {
             LanguageLocaleKey = 'en_US',
             ProfileId = sysAdmin.Id
         );
-        insert adminUser;
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            insert adminUser;
+            PermissionSet ps = [SELECT Id FROM PermissionSet WHERE Name = 'HR_Admin_PS' LIMIT 1];
+            insert new PermissionSetAssignment(AssigneeId = adminUser.Id, PermissionSetId = ps.Id);
+        }
 
         HR_Form__c form;
         System.runAs(adminUser) {

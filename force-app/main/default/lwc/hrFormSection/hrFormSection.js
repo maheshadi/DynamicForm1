@@ -40,6 +40,16 @@ export default class HrFormSection extends LightningElement {
             });
     }
 
+    // Runs constraint validation (pattern/min/max/length) across all visible fields.
+    // Returns false if any field is invalid; each invalid input shows its own error.
+    @api reportValidity() {
+        let allValid = true;
+        this.template.querySelectorAll('c-hr-form-field').forEach(f => {
+            if (f.reportValidity && !f.reportValidity()) allValid = false;
+        });
+        return allValid;
+    }
+
     handleToggle() {
         if (this.section.collapsible) this._collapsed = !this._collapsed;
     }

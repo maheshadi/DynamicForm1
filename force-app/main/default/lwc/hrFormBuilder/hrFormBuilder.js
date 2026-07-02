@@ -34,6 +34,9 @@ export default class HrFormBuilder extends LightningElement {
     _autoSaveTimer = null;
     _autoSaveIntervalSec = AUTO_SAVE_DEFAULT_SEC;
     _publishedSchema = null;
+    // Optimistic-locking token: LastModifiedDate as of our load/last save. The server
+    // rejects saves when someone else modified the form after this timestamp.
+    _editToken = null;
 
     // ─── Page reference ────────────────────────────────────────────────────────
     // wiredPageRef fires both on initial mount AND whenever this tab is activated.
@@ -78,6 +81,7 @@ export default class HrFormBuilder extends LightningElement {
         this.selectedFieldId   = null;
         this.selectedSectionId = null;
         this._publishedSchema  = null;
+        this._editToken        = null;
         this.autoSaveFailed    = false;
         this.autoSaveError     = null;
     }
@@ -205,7 +209,20 @@ export default class HrFormBuilder extends LightningElement {
     }
 
     handleFieldReorder(evt)   { this._applyReorder(evt.detail); }
-    handleSectionReorder(evt) { this._applyReorder(evt.detail); }
+
+    // Section drag-drop emits { draggedId, targetId } (see hrBuilderSection.handleSectionDrop):
+    // move the dragged section to the target's position.
+    handleSectionReorder(evt) {
+        const { draggedId, targetId } = evt.detail || {};
+        if (!draggedId || !targetId || draggedId === targetId) return;
+        this.formSchema = this._immutableUpdate(this.formSchema, schema => {
+            const from = schema.sections.findIndex(s => s.id === draggedId);
+            const to   = schema.sections.findIndex(s => s.id === targetId);
+            if (from === -1 || to === -1) return;
+            const [moved] = schema.sections.splice(from, 1);
+            schema.sections.splice(to, 0, moved);
+        });
+    }
 
     handlePropertyChanged(evt) {
         const { targetId, targetType, changes } = evt.detail;
@@ -312,6 +329,7 @@ export default class HrFormBuilder extends LightningElement {
                     savedSchema.rules    = pubSchema.rules    || [];
                 }
                 this._publishedSchema = pubSchema;
+                this._editToken = rec.LastModifiedDate || null;
                 this.formSchema = {
                     ...savedSchema,
                     id:                  rec.Id,
@@ -340,7 +358,7 @@ export default class HrFormBuilder extends LightningElement {
     }
 
     async _saveDraft() {
-        const savedId = await saveFormApex({
+        const result = await saveFormApex({
             formData: {
                 id:                  this.formSchema.id,
                 name:                this.formSchema.name,
@@ -356,9 +374,15 @@ export default class HrFormBuilder extends LightningElement {
                 redirectUrl:         this.formSchema.redirectUrl,
                 allowDraftSave:      this.formSchema.allowDraftSave,
                 requireConfirmation: this.formSchema.requireConfirmation,
-                recordTypeDevName:   this.formSchema.recordTypeDevName
+                recordTypeDevName:   this.formSchema.recordTypeDevName,
+                // Optimistic-locking token: server rejects if someone else saved after this
+                lastModifiedDate:    this._editToken
             }
         });
+        const savedId = result ? result.id : null;
+        if (result && result.lastModifiedDate) {
+            this._editToken = result.lastModifiedDate;   // refresh token for next save
+        }
         if (savedId && !this.formSchema.id) {
             this.formSchema = { ...this.formSchema, id: savedId };
         }

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>HR_Client_Request_Id__c</fullName>
+    <caseSensitive>true</caseSensitive>
+    <description>Client-generated idempotency key. Unique constraint prevents duplicate submissions from double-clicks or network retries.</description>
+    <externalId>true</externalId>
+    <label>Client Request Id</label>
+    <length>64</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>true</unique>
+</CustomField>

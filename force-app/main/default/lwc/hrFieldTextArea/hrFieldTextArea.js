@@ -5,4 +5,9 @@ export default class HrFieldTextArea extends LightningElement {
     handleChange(evt) {
         this.dispatchEvent(new CustomEvent('valuechanged', { detail: { apiName: this.field.apiName, value: evt.target.value } }));
     }
+    @api reportValidity() {
+        // Rich text has no constraint API — only the plain textarea participates.
+        const el = this.template.querySelector('lightning-textarea');
+        return el && el.reportValidity ? el.reportValidity() : true;
+    }
 }

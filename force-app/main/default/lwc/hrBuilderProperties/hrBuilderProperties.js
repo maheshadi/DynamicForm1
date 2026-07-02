@@ -1,4 +1,6 @@
-import { LightningElement, api, track } from 'lwc';
+import { LightningElement, api, track, wire } from 'lwc';
+import getWhitelistedObjects from '@salesforce/apex/HR_SFObjectService.getWhitelistedObjects';
+import getRecordTypes       from '@salesforce/apex/HR_SFObjectService.getRecordTypes';
 
 const ACTION_COLORS  = { Show:'#2e844a', Hide:'#ba0517', 'Make Required':'#e07400', 'Auto-Populate':'#0070d2' };
 const NUMBER_FIELDS  = new Set(['minLength', 'maxLength', 'minValue', 'maxValue', 'columns']);
@@ -9,6 +11,36 @@ export default class HrBuilderProperties extends LightningElement {
     @api formSchema      = {};
 
     @track activeTab = 'properties';
+    @track _whitelistedObjects = [];
+    @track _recordTypes        = [];
+
+    @wire(getWhitelistedObjects)
+    wiredWhitelist({ data }) {
+        if (data) this._whitelistedObjects = data;
+    }
+
+    // Reactive on the currently selected target object
+    @wire(getRecordTypes, { objectApiName: '$formSchema.targetObjectApi' })
+    wiredRecordTypes({ data, error }) {
+        this._recordTypes = (data && !error) ? data : [];
+    }
+
+    get targetObjectOptions() {
+        return this._whitelistedObjects
+            .filter(o => o.allowAsTarget)
+            .map(o => ({ label: o.label + ' (' + o.apiName + ')', value: o.apiName }));
+    }
+    get lookupObjectOptions() {
+        return this._whitelistedObjects
+            .filter(o => o.allowAsLookup)
+            .map(o => ({ label: o.label + ' (' + o.apiName + ')', value: o.apiName }));
+    }
+    get recordTypeOptions() {
+        return [{ label: '— Default —', value: '' },
+                ...this._recordTypes.map(rt => ({ label: rt.label, value: rt.devName }))];
+    }
+    get hasRecordTypes() { return this._recordTypes.length > 0; }
+    get isLookupField()  { return !!this.selectedField && this.selectedField.type === 'Lookup'; }
 
     // ── Tab state ─────────────────────────────────────────────────────────────
     get isPropertiesTab() { return this.activeTab === 'properties'; }
@@ -52,8 +84,12 @@ export default class HrBuilderProperties extends LightningElement {
             operator       : 'equals',
             triggerValue   : '',
             action         : 'Show',
-            targetType     : 'field',
-            targetApiName  : this.selectedField.apiName
+            targetType     : 'Field',
+            targetApiName  : this.selectedField.apiName,
+            actionValue    : '',
+            isActive       : true,
+            logicGroup     : 'AND',
+            additionalConditions: []
         };
         const currentRules = (this.formSchema && this.formSchema.rules) ? [...this.formSchema.rules] : [];
         this.dispatchEvent(new CustomEvent('propertychanged', {
@@ -144,6 +180,12 @@ export default class HrBuilderProperties extends LightningElement {
                 changes.apiName = this._sanitizeApiName(raw);
             }
             this._dispatch(null, 'form', changes);
+            return;
+        }
+
+        if (f === 'targetObjectApi') {
+            // Record types belong to the object — reset the selection on object change.
+            this._dispatch(null, 'form', { targetObjectApi: raw, recordTypeDevName: '' });
             return;
         }
 

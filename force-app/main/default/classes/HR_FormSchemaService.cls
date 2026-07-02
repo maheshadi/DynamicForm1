@@ -16,7 +16,8 @@ public with sharing class HR_FormSchemaService {
                    HR_On_Submit_Action__c, HR_Success_Message__c,
                    HR_Redirect_URL__c, HR_Allow_Draft_Save__c,
                    HR_Require_Confirmation__c, HR_Version__c, HR_Tags__c,
-                   HR_Description__c, HR_LWC_Name__c, HR_Record_Type_Dev_Name__c
+                   HR_Description__c, HR_LWC_Name__c, HR_Record_Type_Dev_Name__c,
+                   LastModifiedDate
             FROM HR_Form__c
             WHERE HR_API_Name__c = :formApiName
             WITH SECURITY_ENFORCED
@@ -50,13 +51,15 @@ public with sharing class HR_FormSchemaService {
     // ─── Save / Create ─────────────────────────────────────────────────────────
 
     @AuraEnabled
-    public static String saveForm(Map<String, Object> formData) {
+    public static Map<String, Object> saveForm(Map<String, Object> formData) {
         String formId = (String) formData.get('id');
         String apiName = (String) formData.get('apiName');
 
         HR_Form__c form;
         if (String.isNotBlank(formId)) {
-            form = [SELECT Id, HR_Version__c FROM HR_Form__c WHERE Id = :formId WITH SECURITY_ENFORCED LIMIT 1];
+            form = [SELECT Id, HR_Version__c, LastModifiedDate, LastModifiedBy.Name
+                    FROM HR_Form__c WHERE Id = :formId WITH SECURITY_ENFORCED LIMIT 1];
+            assertNoEditConflict(form, (String) formData.get('lastModifiedDate'));
         } else {
             form = new HR_Form__c();
         }
@@ -88,12 +91,28 @@ public with sharing class HR_FormSchemaService {
 
         assertApiNameUnique(apiName, formId);
 
+        // Target object must be on the org whitelist (same gate the picker uses).
+        String targetObjectApi = (String) formData.get('targetObjectApi');
+        if (String.isNotBlank(targetObjectApi)) {
+            HR_SFObjectService.assertWhitelisted(targetObjectApi);
+        }
+
         List<HR_SchemaValidator.ValidationError> errors = HR_SchemaValidator.validate(schemaJSON);
         if (!errors.isEmpty()) {
             throw new AuraHandledException(JSON.serialize(errors));
         }
 
-        upsert saved;
+        try {
+            upsert saved;
+        } catch (DmlException e) {
+            // The unique constraint on HR_API_Name__c is the authoritative guard —
+            // assertApiNameUnique above is advisory UX and can lose a concurrent race.
+            if (e.getDmlType(0) == StatusCode.DUPLICATE_VALUE) {
+                throw new AuraHandledException(
+                    'A form with API name "' + apiName + '" already exists. Choose a unique API name.');
+            }
+            throw e;
+        }
         String savedId = (String) saved.get('Id');
 
         HR_AuditService.logAsync(
@@ -101,7 +120,29 @@ public with sharing class HR_FormSchemaService {
             savedId, null
         );
 
-        return savedId;
+        // Fresh edit token so the client can keep saving without a false conflict.
+        HR_Form__c fresh = [SELECT LastModifiedDate FROM HR_Form__c
+                            WHERE Id = :savedId WITH SECURITY_ENFORCED LIMIT 1];
+        return new Map<String, Object>{
+            'id'               => savedId,
+            'lastModifiedDate' => fresh.LastModifiedDate
+        };
+    }
+
+    // Optimistic locking: reject the save if someone else modified the form after
+    // the client loaded it (prevents silent last-write-wins between two builders).
+    private static void assertNoEditConflict(HR_Form__c current, String clientToken) {
+        if (String.isBlank(clientToken)) return;   // token not supplied — no enforcement
+        Datetime clientTs;
+        try {
+            clientTs = (Datetime) JSON.deserialize('"' + clientToken + '"', Datetime.class);
+        } catch (Exception e) { return; }          // unparseable token — skip rather than block
+        if (current.LastModifiedDate > clientTs) {
+            throw new AuraHandledException(
+                'This form was changed by ' + current.LastModifiedBy.Name + ' ('
+                + current.LastModifiedDate.format() + ') after you opened it. '
+                + 'Reload the form to pick up those changes before saving.');
+        }
     }
 
     // ─── Helpers ───────────────────────────────────────────────────────────────

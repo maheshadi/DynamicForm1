@@ -9,11 +9,16 @@ public with sharing class HR_PublishService {
     public static void publishForm(String formApiName) {
         assertAdminPermission();
 
+        // FOR UPDATE serializes concurrent publishes of the same form so the
+        // deactivate-prior + insert-new-version sequence stays atomic (never two
+        // active versions). FOR UPDATE cannot combine with WITH SECURITY_ENFORCED;
+        // access is gated by assertAdminPermission() above and writes below go
+        // through stripInaccessible.
         HR_Form__c form = [
             SELECT Id, HR_Schema_JSON__c, HR_Version__c, HR_Status__c
             FROM HR_Form__c
             WHERE HR_API_Name__c = :formApiName
-            WITH SECURITY_ENFORCED LIMIT 1
+            LIMIT 1 FOR UPDATE
         ];
 
         // Validate schema before publish

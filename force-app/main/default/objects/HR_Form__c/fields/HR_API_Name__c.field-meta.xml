@@ -3,7 +3,7 @@
     <fullName>HR_API_Name__c</fullName>
     <caseSensitive>false</caseSensitive>
     <encryptionScheme>None</encryptionScheme>
-    <externalId>false</externalId>
+    <externalId>true</externalId>
     <label>API Name</label>
     <length>80</length>
     <required>true</required>

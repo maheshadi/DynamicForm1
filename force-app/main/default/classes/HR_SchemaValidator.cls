@@ -133,7 +133,8 @@ public with sharing class HR_SchemaValidator {
             errors.add(new ValidationError('rule.triggerField',
                 'Rule trigger field not found in form: ' + triggerField));
         }
-        if (targetType == 'Field' && (String.isBlank(targetApi) || !fieldApiNames.contains(targetApi))) {
+        // Case-insensitive: older schemas may carry 'field' from the properties panel
+        if ('field'.equalsIgnoreCase(targetType) && (String.isBlank(targetApi) || !fieldApiNames.contains(targetApi))) {
             errors.add(new ValidationError('rule.targetField',
                 'Rule target field not found in form: ' + targetApi));
         }

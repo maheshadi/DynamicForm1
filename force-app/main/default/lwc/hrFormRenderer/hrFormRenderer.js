@@ -3,6 +3,7 @@ import { NavigationMixin } from 'lightning/navigation';
 import getFormSchema   from '@salesforce/apex/HR_FormRendererController.getFormSchema';
 import submitFormApex  from '@salesforce/apex/HR_SubmissionService.submitForm';
 import saveDraftApex   from '@salesforce/apex/HR_SubmissionService.saveDraft';
+import getMyDraftsApex from '@salesforce/apex/HR_SubmissionService.getMyDrafts';
 import { evaluateRules } from 'c/hrLogicEngine';
 
 export default class HrFormRenderer extends NavigationMixin(LightningElement) {
@@ -30,6 +31,7 @@ export default class HrFormRenderer extends NavigationMixin(LightningElement) {
     }
 
     _startTime = null;
+    _clientRequestId = null;
 
     @track _schema                = null;
     @track _logicBundle           = [];
@@ -45,6 +47,9 @@ export default class HrFormRenderer extends NavigationMixin(LightningElement) {
     @track isSubmitting           = false;
     @track showConfirmation       = false;
     @track hasDraft               = false;
+    @track draftAvailable         = false;
+
+    _draftPayload = null;
 
     // ─── Wire ─────────────────────────────────────────────────────────────────
     @wire(getFormSchema, { formApiName: '$formApiName' })
@@ -58,6 +63,7 @@ export default class HrFormRenderer extends NavigationMixin(LightningElement) {
             this._initDefaults();
             this._initVisibility();
             this.isLoading = false;
+            this._checkForDraft();
         } else if (error) {
             this.hasError     = true;
             this.errorMessage = 'Form unavailable. Please contact support.';
@@ -111,9 +117,23 @@ export default class HrFormRenderer extends NavigationMixin(LightningElement) {
 
     // ─── Form actions ──────────────────────────────────────────────────────────
     async handleSubmit() {
+        if (!this._validateConstraints()) return;
         if (!this._validateRequired()) return;
         if (this.config.requireConfirmation) { this.showConfirmation = true; return; }
         await this._doSubmit();
+    }
+
+    // Constraint validation (pattern / min / max / length) across all rendered
+    // sections — each invalid input shows its own inline error message.
+    _validateConstraints() {
+        let allValid = true;
+        this.template.querySelectorAll('c-hr-form-section').forEach(sec => {
+            if (sec.reportValidity && !sec.reportValidity()) allValid = false;
+        });
+        if (!allValid) {
+            this._showToast('Please fix the highlighted field errors before submitting.', 'error');
+        }
+        return allValid;
     }
 
     handleCancelConfirm()        { this.showConfirmation = false; }
@@ -140,6 +160,33 @@ export default class HrFormRenderer extends NavigationMixin(LightningElement) {
         this.showConfirmation       = false;
     }
 
+    // ─── Draft resume ─────────────────────────────────────────────────────────
+    // Best-effort: offers to restore the user's saved draft for this form.
+    // Only for live (non-preview) renders of forms that allow draft save.
+    async _checkForDraft() {
+        if (this._overrideSchema || !this.formApiName) return;
+        if (!this.config || !this.config.allowDraftSave) return;
+        try {
+            const drafts = await getMyDraftsApex({ formApiName: this.formApiName });
+            if (drafts && drafts.length > 0) {
+                this._draftPayload  = drafts[0].HR_Payload_JSON__c;
+                this.draftAvailable = true;
+            }
+        } catch (e) { /* draft resume is optional — never block the form */ }
+    }
+
+    handleResumeDraft() {
+        try {
+            const saved = JSON.parse(this._draftPayload || '{}');
+            this.fieldValues = { ...this.fieldValues, ...saved };
+            this.hasDraft = true;
+            this._runLogicEngine();
+        } catch (e) { /* corrupt payload — start fresh instead */ }
+        this.draftAvailable = false;
+    }
+
+    handleDismissDraft() { this.draftAvailable = false; }
+
     // ─── Private ──────────────────────────────────────────────────────────────
     _configFromSchema(schema) {
         return {
@@ -162,6 +209,16 @@ export default class HrFormRenderer extends NavigationMixin(LightningElement) {
             }
         }
         this.fieldValues = defaults;
+        // New fill session → new idempotency key. Retries of the SAME session reuse
+        // the key so the server can dedupe double-clicks / network replays.
+        this._clientRequestId = this._newRequestId();
+    }
+
+    _newRequestId() {
+        try {
+            if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+        } catch (e) { /* fall through */ }
+        return 'req_' + Date.now() + '_' + Math.random().toString(36).slice(2, 12);
     }
 
     _initVisibility() {
@@ -220,7 +277,8 @@ export default class HrFormRenderer extends NavigationMixin(LightningElement) {
             await submitFormApex({
                 formApiName: this._effectiveApiName,
                 payloadJSON: JSON.stringify(this.fieldValues),
-                durationSec
+                durationSec,
+                clientRequestId: this._clientRequestId
             });
             this.isSubmitted      = true;
             this.showConfirmation = false;

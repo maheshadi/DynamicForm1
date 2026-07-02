@@ -8,4 +8,8 @@ export default class HrFieldRadio extends LightningElement {
     handleChange(evt) {
         this.dispatchEvent(new CustomEvent('valuechanged', { detail: { apiName: this.field.apiName, value: evt.detail.value } }));
     }
+    @api reportValidity() {
+        const el = this.template.querySelector('lightning-radio-group');
+        return el ? el.reportValidity() : true;
+    }
 }

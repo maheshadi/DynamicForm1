@@ -64,10 +64,12 @@ private class HR_FormSchemaServiceTest {
         };
 
         Test.startTest();
-        String formId = HR_FormSchemaService.saveForm(data);
+        Map<String, Object> result = HR_FormSchemaService.saveForm(data);
         Test.stopTest();
 
+        String formId = (String) result.get('id');
         System.assertNotEquals(null, formId, 'Form should be created');
+        System.assertNotEquals(null, result.get('lastModifiedDate'), 'Edit token should be returned');
         HR_Form__c saved = [SELECT HR_API_Name__c, HR_Status__c FROM HR_Form__c WHERE Id = :formId LIMIT 1];
         System.assertEquals('test_form_create', saved.HR_API_Name__c);
         System.assertEquals('Draft', saved.HR_Status__c);

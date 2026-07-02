@@ -4,6 +4,7 @@ import getFormLibrary from '@salesforce/apex/HR_FormSchemaService.getFormLibrary
 import cloneFormApex  from '@salesforce/apex/HR_FormSchemaService.cloneForm';
 import getFormApex    from '@salesforce/apex/HR_FormSchemaService.getForm';
 import deleteFormApex from '@salesforce/apex/HR_FormSchemaService.deleteForm';
+import archiveFormApex from '@salesforce/apex/HR_PublishService.archiveForm';
 import hasAdminPermission from '@salesforce/customPermission/HR_Form_Admin';
 import { refreshApex } from '@salesforce/apex';
 
@@ -42,6 +43,10 @@ export default class HrFormLibrary extends NavigationMixin(LightningElement) {
     @track deleteTargetName  = '';
     @track deleteSubmissions = 0;
     @track isDeleting        = false;
+    @track showArchiveConfirm   = false;
+    @track archiveTargetApiName = '';
+    @track archiveTargetName    = '';
+    @track isArchiving          = false;
 
     _wiredResult;
 
@@ -91,7 +96,9 @@ export default class HrFormLibrary extends NavigationMixin(LightningElement) {
             badgeStyle   : 'background:' + statusColor(f.status) + '22;color:' + statusColor(f.status) + ';border:1px solid ' + statusColor(f.status) + ';',
             catPillStyle : 'background:' + catColor(f.category) + '22;color:' + catColor(f.category) + ';',
             modDate      : fmtDate(f.lastModified),
-            isPublished  : f.status === 'Published'
+            isPublished  : f.status === 'Published',
+            // Archive requires HR_Form_Admin server-side; hide the button otherwise
+            showArchive  : f.status === 'Published' && !!hasAdminPermission
         }));
     }
 
@@ -273,6 +280,37 @@ export default class HrFormLibrary extends NavigationMixin(LightningElement) {
             this._toast('Delete failed: ' + ((e && e.body && e.body.message) || 'Unknown error'), 'error');
         } finally {
             this.isDeleting = false;
+        }
+    }
+
+    // ── Archive ───────────────────────────────────────────────────────────────
+    handleArchiveClick(evt) {
+        const id   = evt.currentTarget.dataset.id;
+        const form = this.allForms.find(f => f.id === id);
+        if (!form) return;
+        this.archiveTargetApiName = form.apiName;
+        this.archiveTargetName    = form.name;
+        this.showArchiveConfirm   = true;
+    }
+
+    handleCancelArchive() {
+        this.showArchiveConfirm   = false;
+        this.archiveTargetApiName = '';
+        this.archiveTargetName    = '';
+    }
+
+    async handleConfirmArchive() {
+        if (!this.archiveTargetApiName) return;
+        this.isArchiving = true;
+        try {
+            await archiveFormApex({ formApiName: this.archiveTargetApiName });
+            await refreshApex(this._wiredResult);
+            this._toast('"' + this.archiveTargetName + '" archived. It is no longer available to fill in.', 'success');
+            this.handleCancelArchive();
+        } catch (e) {
+            this._toast('Archive failed: ' + ((e && e.body && e.body.message) || 'Unknown error'), 'error');
+        } finally {
+            this.isArchiving = false;
         }
     }
 

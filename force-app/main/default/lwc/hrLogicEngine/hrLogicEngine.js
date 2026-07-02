@@ -21,7 +21,9 @@
  */
 export function evaluateRules(ruleBundle, fieldValues) {
     if (!Array.isArray(ruleBundle) || !fieldValues) return [];
-    return ruleBundle.filter(rule => rule.isActive && ruleConditionsMet(rule, fieldValues));
+    // isActive missing (legacy/panel-created rules) is treated as active;
+    // only an explicit false deactivates. Mirrors HR_LogicEngineService.
+    return ruleBundle.filter(rule => rule.isActive !== false && ruleConditionsMet(rule, fieldValues));
 }
 
 /**
@@ -49,8 +51,9 @@ export function matchesCondition(operator, fieldValue, triggerValue) {
     const tv = triggerValue !== null && triggerValue !== undefined ? String(triggerValue) : '';
 
     switch (operator) {
-        case 'equals':         return fv === tv;
-        case 'not_equals':     return fv !== tv;
+        // String comparisons are case-insensitive on both tiers (see HR_LogicEngineService)
+        case 'equals':         return fv.toLowerCase() === tv.toLowerCase();
+        case 'not_equals':     return fv.toLowerCase() !== tv.toLowerCase();
         case 'contains':       return fv.toLowerCase().includes(tv.toLowerCase());
         case 'not_contains':   return !fv.toLowerCase().includes(tv.toLowerCase());
         case 'starts_with':    return fv.toLowerCase().startsWith(tv.toLowerCase());

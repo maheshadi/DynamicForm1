@@ -5,4 +5,8 @@ export default class HrFieldNumber extends LightningElement {
     handleChange(evt) {
         this.dispatchEvent(new CustomEvent('valuechanged', { detail: { apiName: this.field.apiName, value: evt.target.value } }));
     }
+    @api reportValidity() {
+        const el = this.template.querySelector('lightning-input');
+        return el ? el.reportValidity() : true;
+    }
 }

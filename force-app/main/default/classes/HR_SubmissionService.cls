@@ -6,7 +6,23 @@
 public with sharing class HR_SubmissionService {
 
     @AuraEnabled
-    public static String submitForm(String formApiName, String payloadJSON, Integer durationSec) {
+    public static String submitForm(String formApiName, String payloadJSON,
+            Integer durationSec, String clientRequestId) {
+        // 0. Access gate — view access is checked at render time, but submission
+        // must be independently enforced server-side (client can be bypassed).
+        HR_AccessService.assertCanSubmit(formApiName);
+
+        // 0b. Idempotency: if this client request was already processed (double-click,
+        // network retry), return the existing submission instead of creating a duplicate.
+        if (String.isNotBlank(clientRequestId)) {
+            List<HR_Form_Submission__c> existing = [
+                SELECT Id FROM HR_Form_Submission__c
+                WHERE HR_Client_Request_Id__c = :clientRequestId
+                WITH SECURITY_ENFORCED LIMIT 1
+            ];
+            if (!existing.isEmpty()) return existing[0].Id;
+        }
+
         // 1. Re-evaluate server-side logic rules to prevent client bypass
         Map<String, Object> payload =
             (Map<String, Object>) JSON.deserializeUntyped(payloadJSON);
@@ -25,27 +41,57 @@ public with sharing class HR_SubmissionService {
             WITH SECURITY_ENFORCED LIMIT 1
         ];
 
-        // 3. Map payload to target SObject using sfFieldApi from schema JSON and insert
-        SObject targetRecord = mapToSObject(form, payload);
-        SObjectAccessDecision dec = Security.stripInaccessible(AccessType.CREATABLE,
-            new List<SObject>{ targetRecord });
-        insert dec.getRecords()[0];
-        String targetRecordId = (String) dec.getRecords()[0].get('Id');
+        // 3+4. Map payload to target SObject and persist header. Savepoint covers the
+        // race where two identical requests pass the pre-check: the loser's unique-key
+        // violation rolls back its target record too, leaving exactly one of each.
+        Savepoint sp = Database.setSavepoint();
+        try {
+            SObject targetRecord = mapToSObject(form, payload);
+            SObjectAccessDecision dec = Security.stripInaccessible(AccessType.CREATABLE,
+                new List<SObject>{ targetRecord });
+            insert dec.getRecords()[0];
+            String targetRecordId = (String) dec.getRecords()[0].get('Id');
 
-        // 4. Persist submission header (full payload stored as JSON — single source of truth)
-        HR_Form_Submission__c sub = createSubmissionRecord(
-            form, payloadJSON, targetRecordId, durationSec);
-        insert sub;
+            HR_Form_Submission__c sub = createSubmissionRecord(
+                form, payloadJSON, targetRecordId, durationSec);
+            sub.HR_Client_Request_Id__c = String.isNotBlank(clientRequestId) ? clientRequestId : null;
+            insert sub;
 
-        // 5. Audit log async
-        HR_AuditService.logAsync('Submission_Created', sub.Id, null);
-
-        return sub.Id;
+            HR_AuditService.logAsync('Submission_Created', sub.Id, null);
+            return sub.Id;
+        } catch (DmlException e) {
+            if (e.getDmlType(0) == StatusCode.DUPLICATE_VALUE && String.isNotBlank(clientRequestId)) {
+                Database.rollback(sp);
+                List<HR_Form_Submission__c> winner = [
+                    SELECT Id FROM HR_Form_Submission__c
+                    WHERE HR_Client_Request_Id__c = :clientRequestId
+                    WITH SECURITY_ENFORCED LIMIT 1
+                ];
+                if (!winner.isEmpty()) return winner[0].Id;
+            }
+            throw e;
+        }
     }
 
     @AuraEnabled
     public static String saveDraft(String formApiName, String payloadJSON) {
-        // Enforce concurrent draft limit from custom setting
+        // Repeated saves refine ONE draft per user per form (update in place) rather
+        // than inserting a copy each time and burning through the draft cap.
+        List<HR_Form_Submission__c> mine = [
+            SELECT Id FROM HR_Form_Submission__c
+            WHERE HR_Submitted_By__c = :UserInfo.getUserId()
+              AND HR_Status__c = 'Draft'
+              AND HR_Form__r.HR_API_Name__c = :formApiName
+            WITH SECURITY_ENFORCED
+            ORDER BY LastModifiedDate DESC LIMIT 1
+        ];
+        if (!mine.isEmpty()) {
+            mine[0].HR_Payload_JSON__c = payloadJSON;
+            update mine[0];
+            return mine[0].Id;
+        }
+
+        // Enforce concurrent draft limit from custom setting (new drafts only)
         HR_Org_Settings__c settings = HR_Org_Settings__c.getInstance();
         Integer maxDrafts = (settings.HR_Max_Draft_Submissions__c != null)
             ? Integer.valueOf(settings.HR_Max_Draft_Submissions__c) : 5;
@@ -129,32 +175,20 @@ public with sharing class HR_SubmissionService {
 
         // Read field-to-SF-object mappings from the immutable published version snapshot
         // (sfFieldApi property) — never from a mutable field that could drift post-publish.
-        String schemaJSON = HR_PublishService.getActiveSchemaJSON(form.Id);
-        if (String.isBlank(schemaJSON)) return record;
+        HR_FormSchema schema = HR_FormSchema.parse(
+            HR_PublishService.getActiveSchemaJSON(form.Id));
 
-        Map<String, Object> schema = (Map<String, Object>) JSON.deserializeUntyped(schemaJSON);
-        List<Object> sections = schema.containsKey('sections')
-            ? (List<Object>) schema.get('sections') : new List<Object>();
+        for (HR_FormSchema.Field fld : schema.allFields()) {
+            if (String.isBlank(fld.sfFieldApi)) continue;
 
-        for (Object secObj : sections) {
-            Map<String, Object> sec = (Map<String, Object>) secObj;
-            List<Object> fields = sec.containsKey('fields')
-                ? (List<Object>) sec.get('fields') : new List<Object>();
-            for (Object fldObj : fields) {
-                Map<String, Object> fld = (Map<String, Object>) fldObj;
-                String sfFieldApi = (String) fld.get('sfFieldApi');
-                if (String.isBlank(sfFieldApi)) continue;
+            // Per-field FLS: skip mappings to fields the running user cannot create,
+            // rather than relying solely on the final stripInaccessible() over the whole record.
+            Schema.SObjectField targetField = targetFields.get(fld.sfFieldApi.toLowerCase());
+            if (targetField == null || !targetField.getDescribe().isCreateable()) continue;
 
-                // Per-field FLS: skip mappings to fields the running user cannot create,
-                // rather than relying solely on the final stripInaccessible() over the whole record.
-                Schema.SObjectField targetField = targetFields.get(sfFieldApi.toLowerCase());
-                if (targetField == null || !targetField.getDescribe().isCreateable()) continue;
-
-                String apiName = (String) fld.get('apiName');
-                Object val = payload.get(apiName);
-                if (val != null) {
-                    record.put(sfFieldApi, val);
-                }
+            Object val = payload.get(fld.apiName);
+            if (val != null) {
+                record.put(fld.sfFieldApi, val);
             }
         }
         return record;

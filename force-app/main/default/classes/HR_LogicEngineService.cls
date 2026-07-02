@@ -5,17 +5,6 @@
  */
 public with sharing class HR_LogicEngineService {
 
-    // ─── Extract rules list from a deserialized schema map ────────────────────
-
-    public static List<Map<String, Object>> getRulesFromSchema(Map<String, Object> schema) {
-        List<Map<String, Object>> result = new List<Map<String, Object>>();
-        if (schema == null || !schema.containsKey('rules')) return result;
-        for (Object rObj : (List<Object>) schema.get('rules')) {
-            result.add((Map<String, Object>) rObj);
-        }
-        return result;
-    }
-
     // ─── Server-side submission validation ────────────────────────────────────
 
     public static List<HR_SchemaValidator.ValidationError> validateSubmission(
@@ -28,23 +17,20 @@ public with sharing class HR_LogicEngineService {
             WITH SECURITY_ENFORCED LIMIT 1
         ];
 
-        String schemaJSON = HR_PublishService.getActiveSchemaJSON(form.Id);
-        Map<String, Object> schema = String.isBlank(schemaJSON)
-            ? new Map<String, Object>()
-            : (Map<String, Object>) JSON.deserializeUntyped(schemaJSON);
+        HR_FormSchema schema = HR_FormSchema.parse(
+            HR_PublishService.getActiveSchemaJSON(form.Id));
 
-        List<Map<String, Object>> rules = getRulesFromSchema(schema);
         List<HR_SchemaValidator.ValidationError> errors =
             new List<HR_SchemaValidator.ValidationError>();
 
-        for (Map<String, Object> r : rules) {
-            if (r.get('action') != 'Make_Required') continue;
-            if (conditionsMet(r, payload)) {
-                String targetApi  = (String) r.get('targetApiName');
-                Object fieldValue = payload.get(targetApi);
+        // activeRulesByAction applies the isActive parity rule (only explicit
+        // false deactivates), mirroring hrLogicEngine.evaluateRules on the client.
+        for (HR_FormSchema.Rule r : schema.activeRulesByAction('Make_Required')) {
+            if (conditionsMet(r.raw, payload)) {
+                Object fieldValue = payload.get(r.targetApiName);
                 if (fieldValue == null || String.isBlank(String.valueOf(fieldValue))) {
                     errors.add(new HR_SchemaValidator.ValidationError(
-                        targetApi, 'This field is required.'));
+                        r.targetApiName, 'This field is required.'));
                 }
             }
         }
@@ -86,12 +72,16 @@ public with sharing class HR_LogicEngineService {
 
     // ─── Condition evaluator ───────────────────────────────────────────────────
 
+    // String comparisons are case-insensitive on both tiers (Apex == already is;
+    // contains/starts_with are lowered explicitly). Mirrors hrLogicEngine.matchesCondition.
     public static Boolean matchesCondition(String operator, String actual, String expected) {
+        String actualLc   = actual   == null ? null : actual.toLowerCase();
+        String expectedLc = expected == null ? ''   : expected.toLowerCase();
         if (operator == 'equals')        return actual == expected;
         if (operator == 'not_equals')    return actual != expected;
-        if (operator == 'contains')      return actual != null && actual.contains(expected);
-        if (operator == 'not_contains')  return actual == null || !actual.contains(expected);
-        if (operator == 'starts_with')   return actual != null && actual.startsWith(expected);
+        if (operator == 'contains')      return actualLc != null && actualLc.contains(expectedLc);
+        if (operator == 'not_contains')  return actualLc == null || !actualLc.contains(expectedLc);
+        if (operator == 'starts_with')   return actualLc != null && actualLc.startsWith(expectedLc);
         if (operator == 'is_empty')      return String.isBlank(actual);
         if (operator == 'is_not_empty')  return String.isNotBlank(actual);
         if (operator == 'greater_than')  return numericCompare(actual, expected, '>');

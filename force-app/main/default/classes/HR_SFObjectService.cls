@@ -96,30 +96,65 @@ public with sharing class HR_SFObjectService {
 
         assertWhitelisted(objectApiName);
 
-        String safeDisplayField = String.isNotBlank(displayField) ? displayField : 'Name';
-        List<String> searchFields = String.isNotBlank(searchFieldsCsv)
-            ? searchFieldsCsv.split(',') : new List<String>{ 'Name' };
+        Map<String, Schema.SObjectField> fieldMap = Schema.getGlobalDescribe()
+            .get(objectApiName).getDescribe().fields.getMap();
 
-        // Build SOQL — filter fragment validated by HR_SchemaValidator
+        // Field identifiers are resolved through describe (canonical name, FLS-checked)
+        // so user-supplied strings are never interpolated into SOQL directly.
+        String safeDisplayField = resolveFieldIdentifier(fieldMap,
+            String.isNotBlank(displayField) ? displayField : 'Name');
+
+        List<String> searchFields = new List<String>();
+        if (String.isNotBlank(searchFieldsCsv)) {
+            for (String f : searchFieldsCsv.split(',')) {
+                if (String.isNotBlank(f)) searchFields.add(resolveFieldIdentifier(fieldMap, f.trim()));
+            }
+        }
+        if (searchFields.isEmpty()) searchFields.add(safeDisplayField);
+
+        // Runtime defense-in-depth: the filter fragment is validated at schema-save
+        // time, but re-validate here in case the stored schema was tampered with.
+        if (String.isNotBlank(filterSOQL)
+                && !HR_SchemaValidator.validateSOQLFragment(filterSOQL).isEmpty()) {
+            throw new AuraHandledException('Lookup filter contains disallowed SOQL.');
+        }
+
+        String likeTerm = '%' + searchTerm + '%';   // bound, not interpolated
+        List<String> conditions = new List<String>();
+        for (String f : searchFields) {
+            conditions.add(f + ' LIKE :likeTerm');
+        }
+
         String soql = 'SELECT Id, ' + safeDisplayField
                     + ' FROM ' + objectApiName
-                    + ' WHERE ' + safeDisplayField + ' LIKE \'%' + String.escapeSingleQuotes(searchTerm) + '%\'';
+                    + ' WHERE (' + String.join(conditions, ' OR ') + ')';
         if (String.isNotBlank(filterSOQL)) {
             soql += ' AND (' + filterSOQL + ')';
         }
-        soql += ' WITH SECURITY_ENFORCED LIMIT 10';
+        soql += ' WITH SECURITY_ENFORCED ORDER BY ' + safeDisplayField + ' LIMIT 10';
 
         List<Map<String, Object>> results = new List<Map<String, Object>>();
         for (SObject rec : Database.query(soql)) {
             results.add(new Map<String, Object>{
-                'id'   => rec.get('Id'),
-                'name' => rec.get(safeDisplayField)
+                'id'    => rec.get('Id'),
+                'label' => rec.get(safeDisplayField)
             });
         }
         return results;
     }
 
-    private static void assertWhitelisted(String objectApiName) {
+    // Resolves a field name to its canonical describe name, enforcing existence + FLS.
+    // Throws for unknown/inaccessible fields — never returns raw user input.
+    private static String resolveFieldIdentifier(
+            Map<String, Schema.SObjectField> fieldMap, String fieldName) {
+        Schema.SObjectField f = fieldMap.get(fieldName.toLowerCase());
+        if (f == null || !f.getDescribe().isAccessible()) {
+            throw new AuraHandledException('Invalid or inaccessible lookup field: ' + fieldName);
+        }
+        return f.getDescribe().getName();
+    }
+
+    public static void assertWhitelisted(String objectApiName) {
         List<HR_Object_Whitelist__mdt> wl = [
             SELECT Id FROM HR_Object_Whitelist__mdt
             WHERE HR_Object_API_Name__c = :objectApiName

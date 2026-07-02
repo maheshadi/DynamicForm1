@@ -22,11 +22,13 @@ export default class HrFieldLookup extends LightningElement {
     async _doSearch() {
         this.isSearching = true; this.showDropdown = true;
         try {
+            // Parameter names must match HR_FormRendererController.lookupSearch
             this.results = await lookupSearchApex({
                 objectApiName: this.field.lookupObjectApi,
                 searchTerm:    this.searchTerm,
-                filterField:   this.field.lookupFilterField || null,
-                filterValue:   this.field.lookupFilterValue || null
+                displayField:  this.field.lookupDisplayField  || null,
+                searchFields:  this.field.lookupSearchFields  || null,
+                filterSOQL:    this.field.lookupFilterSOQL    || null
             });
         } catch(e) { this.results = []; }
         this.isSearching = false;

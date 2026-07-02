@@ -36,4 +36,14 @@ export default class HrFormField extends LightningElement {
     bubble(evt) {
         this.dispatchEvent(new CustomEvent('valuechanged', { detail: evt.detail }));
     }
+
+    // Delegates to whichever typed field component is rendered. Components without
+    // a constraint API (info box, divider, lookup, etc.) simply report valid.
+    @api reportValidity() {
+        const child = this.template.querySelector(
+            'c-hr-field-text, c-hr-field-number, c-hr-field-date, c-hr-field-text-area,' +
+            ' c-hr-field-dropdown, c-hr-field-radio, c-hr-field-multi-select'
+        );
+        return child && child.reportValidity ? child.reportValidity() : true;
+    }
 }

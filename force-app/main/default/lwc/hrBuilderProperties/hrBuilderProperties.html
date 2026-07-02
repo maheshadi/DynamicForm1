@@ -28,6 +28,10 @@
                     <lightning-input label="Form Name"   value={formSchema.name}    data-field="name"    onchange={handleFormChange}></lightning-input>
                     <lightning-input label="API Name"    value={formSchema.apiName} data-field="apiName" onchange={handleFormChange} class="slds-m-top_x-small"></lightning-input>
                     <lightning-combobox label="Category" value={formSchema.category} options={categoryOptions} data-field="category" onchange={handleFormChange} class="slds-m-top_x-small"></lightning-combobox>
+                    <lightning-combobox label="Target Object" value={formSchema.targetObjectApi} options={targetObjectOptions} data-field="targetObjectApi" onchange={handleFormChange} class="slds-m-top_x-small" field-level-help="Submissions create a record of this object. Fields map via each field's 'SF Field Mapping'."></lightning-combobox>
+                    <template if:true={hasRecordTypes}>
+                        <lightning-combobox label="Record Type" value={formSchema.recordTypeDevName} options={recordTypeOptions} data-field="recordTypeDevName" onchange={handleFormChange} class="slds-m-top_x-small"></lightning-combobox>
+                    </template>
                     <lightning-textarea label="Description" value={formSchema.description} data-field="description" onchange={handleFormChange} class="slds-m-top_x-small"></lightning-textarea>
                     <lightning-input label="Tags (comma-separated)" value={formSchema.tags} data-field="tags" onchange={handleFormChange} class="slds-m-top_x-small"></lightning-input>
                     <lightning-combobox label="On Submit Action" value={formSchema.onSubmitAction} options={submitActionOptions} data-field="onSubmitAction" onchange={handleFormChange} class="slds-m-top_x-small"></lightning-combobox>
@@ -61,6 +65,15 @@
                     <lightning-input label="Default Value"  value={selectedField.defaultValue}  data-field="defaultValue"  onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-input>
                     <lightning-textarea label="Help Text"   value={selectedField.helpText}       data-field="helpText"      onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-textarea>
                     <lightning-input label="SF Field Mapping" value={selectedField.sfFieldApi}  data-field="sfFieldApi"    onchange={handleFieldChange} class="slds-m-top_x-small" placeholder="e.g. Employee_NUID__c"></lightning-input>
+
+                    <!-- Lookup configuration (Lookup fields only) -->
+                    <template if:true={isLookupField}>
+                        <div class="hr-props-section-title slds-m-top_small">Lookup Configuration</div>
+                        <lightning-combobox label="Lookup Object" value={selectedField.lookupObjectApi} options={lookupObjectOptions} data-field="lookupObjectApi" onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-combobox>
+                        <lightning-input label="Display Field" value={selectedField.lookupDisplayField} data-field="lookupDisplayField" onchange={handleFieldChange} class="slds-m-top_x-small" placeholder="Name" field-level-help="Field shown in results (defaults to Name)"></lightning-input>
+                        <lightning-input label="Search Fields (comma-separated)" value={selectedField.lookupSearchFields} data-field="lookupSearchFields" onchange={handleFieldChange} class="slds-m-top_x-small" placeholder="Name,Email" field-level-help="Fields matched against the typed search term"></lightning-input>
+                        <lightning-input label="Filter (SOQL WHERE fragment)" value={selectedField.lookupFilterSOQL} data-field="lookupFilterSOQL" onchange={handleFieldChange} class="slds-m-top_x-small" placeholder="IsActive = true"></lightning-input>
+                    </template>
                 </template>
             </template>
 
@@ -140,7 +153,6 @@
                     <lightning-input label="Max Value"     type="number" value={selectedField.maxValue}     data-field="maxValue"     onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-input>
                     <lightning-input label="Pattern (regex)" value={selectedField.pattern}  data-field="pattern"  onchange={handleFieldChange} class="slds-m-top_x-small" placeholder="e.g. ^[A-Z]{1}[0-9]{6}$"></lightning-input>
                     <lightning-textarea label="Custom Error Message" value={selectedField.validationMessage} data-field="validationMessage" onchange={handleFieldChange} class="slds-m-top_x-small" placeholder="This field is invalid."></lightning-textarea>
-                    <lightning-input type="toggle" label="Validate on Blur" checked={selectedField.validateOnBlur} data-field="validateOnBlur" onchange={handleFieldToggle} class="slds-m-top_x-small"></lightning-input>
                 </template>
             </template>
 

@@ -12,4 +12,8 @@ export default class HrFieldMultiSelect extends LightningElement {
     handleChange(evt) {
         this.dispatchEvent(new CustomEvent('valuechanged', { detail: { apiName: this.field.apiName, value: evt.detail.value.join(';') } }));
     }
+    @api reportValidity() {
+        const el = this.template.querySelector('lightning-dual-listbox');
+        return el ? el.reportValidity() : true;
+    }
 }

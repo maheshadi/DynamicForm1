@@ -54,6 +54,17 @@
                 </template>
 
                 <template if:false={showConfirmation}>
+                    <!-- Draft resume offer -->
+                    <template if:true={draftAvailable}>
+                        <div class="slds-notify slds-notify_alert slds-theme_info slds-m-bottom_small" role="alert">
+                            <lightning-icon icon-name="utility:edit_form" size="x-small"
+                                class="slds-m-right_x-small" variant="inverse"></lightning-icon>
+                            <span>You have a saved draft of this form.</span>
+                            <button class="slds-button slds-button_neutral slds-m-left_small" onclick={handleResumeDraft}>Resume draft</button>
+                            <button class="slds-button slds-button_neutral slds-m-left_x-small" onclick={handleDismissDraft}>Start fresh</button>
+                        </div>
+                    </template>
+
                     <!-- Sections -->
                     <template for:each={visibleSections} for:item="section">
                         <c-hr-form-section

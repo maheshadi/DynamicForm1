@@ -1,12 +1,41 @@
 import { LightningElement, api, track, wire } from 'lwc';
 import getWhitelistedObjects from '@salesforce/apex/HR_SFObjectService.getWhitelistedObjects';
 import getRecordTypes       from '@salesforce/apex/HR_SFObjectService.getRecordTypes';
+import describeObject       from '@salesforce/apex/HR_SFObjectService.describeObject';
 
 const ACTION_COLORS  = { Show:'#2e844a', Hide:'#ba0517', 'Make Required':'#e07400', 'Auto-Populate':'#0070d2' };
 const NUMBER_FIELDS  = new Set(['minLength', 'maxLength', 'minValue', 'maxValue', 'columns']);
 
+// Which Salesforce field types each form field type can sensibly map onto.
+// Undefined form types show all createable fields.
+const TYPE_COMPAT = {
+    Text:        ['STRING', 'TEXTAREA', 'PICKLIST', 'EMAIL', 'PHONE', 'URL'],
+    Email:       ['EMAIL', 'STRING'],
+    Phone:       ['PHONE', 'STRING'],
+    URL:         ['URL', 'STRING'],
+    Number:      ['DOUBLE', 'CURRENCY', 'PERCENT', 'INTEGER', 'STRING'],
+    Currency:    ['CURRENCY', 'DOUBLE', 'STRING'],
+    Percentage:  ['PERCENT', 'DOUBLE', 'STRING'],
+    Date:        ['DATE', 'STRING'],
+    DateTime:    ['DATETIME', 'STRING'],
+    TextArea:    ['TEXTAREA', 'STRING'],
+    RichText:    ['TEXTAREA', 'STRING'],
+    Dropdown:    ['PICKLIST', 'STRING'],
+    Radio:       ['PICKLIST', 'STRING'],
+    Checkbox:    ['BOOLEAN'],
+    MultiSelect: ['MULTIPICKLIST', 'TEXTAREA', 'STRING'],
+    Lookup:      ['REFERENCE', 'STRING'],
+    CurrentUser: ['REFERENCE', 'STRING']
+};
+const UNMAPPABLE_TYPES = new Set(['InfoBox', 'Instructions', 'Divider', 'SectionHeader', 'FileUpload', 'RecordField']);
+
 export default class HrBuilderProperties extends LightningElement {
-    @api selectedField   = null;
+    _selectedFieldInternal = null;
+    @api get selectedField() { return this._selectedFieldInternal; }
+    set selectedField(v) {
+        this._selectedFieldInternal = v;
+        this._syncMappingObject();
+    }
     @api selectedSection = null;
     @api formSchema      = {};
 
@@ -41,6 +70,82 @@ export default class HrBuilderProperties extends LightningElement {
     }
     get hasRecordTypes() { return this._recordTypes.length > 0; }
     get isLookupField()  { return !!this.selectedField && this.selectedField.type === 'Lookup'; }
+
+    // ── SF field mapping picker ───────────────────────────────────────────────
+    @track _mappingObjectApi = null;
+    @track _mappingFields    = [];
+
+    @wire(describeObject, { objectApiName: '$_mappingObjectApi' })
+    wiredMappingDescribe({ data, error }) {
+        this._mappingFields = (data && data.fields && !error) ? data.fields : [];
+    }
+
+    // Keep the mapping-object selection in sync with the selected field's stored
+    // mapping ('Obj.Field' → Obj, plain 'Field' → the form's primary target object).
+    _syncMappingObject() {
+        const f = this._selectedFieldInternal;
+        if (!f || UNMAPPABLE_TYPES.has(f.type)) return;
+        const m = (f.sfFieldApi || '').trim();
+        const obj = m.includes('.')
+            ? m.split('.')[0]
+            : (this.formSchema && this.formSchema.targetObjectApi) || null;
+        if (obj && obj !== this._mappingObjectApi) this._mappingObjectApi = obj;
+    }
+
+    get isMappableField() {
+        return !!this.selectedField && !UNMAPPABLE_TYPES.has(this.selectedField.type);
+    }
+
+    get mappingObjectOptions() {
+        const target = this.formSchema && this.formSchema.targetObjectApi;
+        const opts = [];
+        const seen = new Set();
+        if (target) {
+            opts.push({ label: target + ' — primary target', value: target });
+            seen.add(target);
+        }
+        this._whitelistedObjects.forEach(o => {
+            if (!seen.has(o.apiName)) {
+                seen.add(o.apiName);
+                opts.push({ label: o.label + ' (' + o.apiName + ') — related', value: o.apiName });
+            }
+        });
+        return opts;
+    }
+
+    get mappingObjectValue() {
+        const m = ((this.selectedField && this.selectedField.sfFieldApi) || '').trim();
+        if (m.includes('.')) return m.split('.')[0];
+        return this._mappingObjectApi || (this.formSchema && this.formSchema.targetObjectApi) || '';
+    }
+
+    get mappingFieldValue() {
+        const m = ((this.selectedField && this.selectedField.sfFieldApi) || '').trim();
+        return m.includes('.') ? m.substring(m.indexOf('.') + 1) : m;
+    }
+
+    get mappingFieldOptions() {
+        const compat = TYPE_COMPAT[this.selectedField && this.selectedField.type];
+        const fields = (this._mappingFields || [])
+            .filter(f => f.createable && (!compat || compat.includes(f.type)))
+            .map(f => ({ label: f.label + ' (' + f.apiName + ')', value: f.apiName }))
+            .sort((a, b) => a.label.localeCompare(b.label));
+        return [{ label: '— Not mapped —', value: '' }, ...fields];
+    }
+
+    handleMappingObjectChange(evt) {
+        this._mappingObjectApi = evt.detail.value;
+        // Object changed → previous field mapping no longer applies
+        this._dispatch(this.selectedField.id, 'field', { sfFieldApi: '' });
+    }
+
+    handleMappingFieldChange(evt) {
+        const fieldApi = evt.detail.value;
+        const target   = this.formSchema && this.formSchema.targetObjectApi;
+        const obj      = this._mappingObjectApi || target;
+        const composed = !fieldApi ? '' : (obj === target ? fieldApi : obj + '.' + fieldApi);
+        this._dispatch(this.selectedField.id, 'field', { sfFieldApi: composed });
+    }
 
     // ── Tab state ─────────────────────────────────────────────────────────────
     get isPropertiesTab() { return this.activeTab === 'properties'; }

@@ -64,7 +64,13 @@
                     <lightning-input label="Placeholder"    value={selectedField.placeholder}   data-field="placeholder"   onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-input>
                     <lightning-input label="Default Value"  value={selectedField.defaultValue}  data-field="defaultValue"  onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-input>
                     <lightning-textarea label="Help Text"   value={selectedField.helpText}       data-field="helpText"      onchange={handleFieldChange} class="slds-m-top_x-small"></lightning-textarea>
-                    <lightning-input label="SF Field Mapping" value={selectedField.sfFieldApi}  data-field="sfFieldApi"    onchange={handleFieldChange} class="slds-m-top_x-small" placeholder="e.g. Employee_NUID__c"></lightning-input>
+                    <!-- SF field mapping: pick the object (primary target or a related
+                         object linked by lookup), then a type-compatible creatable field -->
+                    <template if:true={isMappableField}>
+                        <div class="hr-props-section-title slds-m-top_small">Salesforce Mapping</div>
+                        <lightning-combobox label="Map To Object" value={mappingObjectValue} options={mappingObjectOptions} onchange={handleMappingObjectChange} class="slds-m-top_x-small" field-level-help="Related objects are created with the submission and linked to the primary record automatically"></lightning-combobox>
+                        <lightning-combobox label="Map To Field" value={mappingFieldValue} options={mappingFieldOptions} onchange={handleMappingFieldChange} class="slds-m-top_x-small" field-level-help="Only fields compatible with this form field's type are listed"></lightning-combobox>
+                    </template>
 
                     <!-- Lookup configuration (Lookup fields only) -->
                     <template if:true={isLookupField}>

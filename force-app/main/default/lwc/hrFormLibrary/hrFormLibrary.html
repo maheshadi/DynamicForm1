@@ -148,14 +148,24 @@
 
                                         <!-- Actions -->
                                         <div class="fc-card-actions">
-                                            <button class="fc-btn fc-btn-neutral" data-id={form.id} onclick={handleEdit}>Edit</button>
-                                            <button class="fc-btn fc-btn-brand" data-id={form.id} onclick={handlePreview}>Preview</button>
-                                            <button class="fc-btn fc-btn-neutral" data-id={form.id} onclick={handleClone}>Clone</button>
+                                            <button class="fc-icon-btn fc-icon-btn-neutral" data-id={form.id} onclick={handleEdit} title="Edit">
+                                                <lightning-icon icon-name="utility:edit" size="x-small"></lightning-icon>
+                                            </button>
+                                            <button class="fc-icon-btn fc-icon-btn-brand" data-id={form.id} onclick={handlePreview} title="Preview">
+                                                <lightning-icon icon-name="utility:preview" size="x-small" variant="inverse"></lightning-icon>
+                                            </button>
+                                            <button class="fc-icon-btn fc-icon-btn-neutral" data-id={form.id} onclick={handleClone} title="Clone">
+                                                <lightning-icon icon-name="utility:copy" size="x-small"></lightning-icon>
+                                            </button>
                                             <template if:true={form.showArchive}>
-                                                <button class="fc-btn fc-btn-neutral" data-id={form.id} onclick={handleArchiveClick} title="Retire this form — it stays in the catalog but can no longer be filled in">Archive</button>
+                                                <button class="fc-icon-btn fc-icon-btn-neutral" data-id={form.id} onclick={handleArchiveClick} title="Archive — retire this form from active use">
+                                                    <lightning-icon icon-name="utility:archive" size="x-small"></lightning-icon>
+                                                </button>
                                             </template>
                                             <template if:true={canDelete}>
-                                                <button class="fc-btn fc-btn-danger" data-id={form.id} onclick={handleDeleteClick} title="Delete form and all related data">Delete</button>
+                                                <button class="fc-icon-btn fc-icon-btn-danger" data-id={form.id} onclick={handleDeleteClick} title="Delete form and all related data">
+                                                    <lightning-icon icon-name="utility:delete" size="x-small"></lightning-icon>
+                                                </button>
                                             </template>
                                         </div>
                                     </div>

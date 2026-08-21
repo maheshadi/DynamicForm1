@@ -198,39 +198,46 @@
 /* ── Card actions ──────────────────────────────────────────────────── */
 .fc-card-actions {
     display: flex;
-    gap: .4rem;
+    align-items: center;
+    gap: .35rem;
     padding-top: .5rem;
     border-top: 1px solid #f3f2f2;
     margin-top: auto;
 }
-.fc-btn {
-    padding: 3px 12px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
+.fc-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
     border: 1px solid;
-    transition: opacity .12s;
+    cursor: pointer;
+    transition: background .15s, opacity .15s;
+    flex-shrink: 0;
 }
-.fc-btn:hover { opacity: .85; }
-.fc-btn-neutral {
+.fc-icon-btn:hover { opacity: .8; }
+.fc-icon-btn-neutral {
     background: #fff;
-    color: #3e3e3c;
     border-color: #c9c9c9;
+    color: #3e3e3c;
 }
-.fc-btn-brand {
+.fc-icon-btn-neutral:hover {
+    background: #f3f2f2;
+    opacity: 1;
+}
+.fc-icon-btn-brand {
     background: #0070d2;
-    color: #fff;
     border-color: #0070d2;
-}
-.fc-btn-danger {
-    background: #fff;
-    color: #ba0517;
-    border-color: #ba0517;
-}
-.fc-btn-danger:hover {
-    background: #ba0517;
     color: #fff;
+}
+.fc-icon-btn-danger {
+    background: #fff;
+    border-color: #ba0517;
+    color: #ba0517;
+}
+.fc-icon-btn-danger:hover {
+    background: #ba0517;
     opacity: 1;
 }
 
